@@ -1,6 +1,6 @@
 # Security Audit & Fix Prompt
 
-> **Use this prompt with Cursor Agent (or any AI coding assistant) to perform a full security audit and fix on any project built from the standardecom framework.**
+> **Use this prompt with Cursor Agent (or any AI coding assistant) to perform a full security audit and fix on any project built from this e-commerce framework.**
 >
 > **Prerequisites:** Ensure the AI has access to your Supabase MCP connection before starting.
 

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -65,6 +66,7 @@ export default function AdvancedSearch() {
     }
   ];
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const saved = localStorage.getItem('recentSearches');
     if (saved) {

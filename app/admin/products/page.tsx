@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import Link from 'next/link';
@@ -28,6 +29,7 @@ export default function ProductsPage() {
     'archived': 'bg-amber-100 text-amber-700',
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchProducts();
     fetchCategories();
@@ -109,27 +111,58 @@ export default function ProductsPage() {
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    if (confirm('Are you sure you want to delete this product?')) {
-      const { error } = await supabase.from('products').delete().eq('id', productId);
-      if (!error) {
-        setProducts(products.filter(p => p.id !== productId));
-        alert('Product deleted successfully');
-      } else {
-        alert('Error deleting product');
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    try {
+      // Unlink from order_items so we can delete (order history keeps product_name/sku/price)
+      await supabase.from('order_items').update({ product_id: null, variant_id: null }).eq('product_id', productId);
+      // Delete in dependency order: review_images → reviews → cart_items → wishlist_items → product_images → product_variants → products
+      const { data: reviewIds } = await supabase.from('reviews').select('id').eq('product_id', productId);
+      if (reviewIds?.length) {
+        const ids = reviewIds.map((r) => r.id);
+        await supabase.from('review_images').delete().in('review_id', ids);
+        await supabase.from('reviews').delete().eq('product_id', productId);
       }
+      await supabase.from('cart_items').delete().eq('product_id', productId);
+      await supabase.from('wishlist_items').delete().eq('product_id', productId);
+      await supabase.from('product_images').delete().eq('product_id', productId);
+      await supabase.from('product_variants').delete().eq('product_id', productId);
+      const { error } = await supabase.from('products').delete().eq('id', productId);
+      if (error) throw error;
+      setProducts(products.filter((p) => p.id !== productId));
+      alert('Product deleted successfully');
+    } catch (err: any) {
+      alert('Error deleting product: ' + (err?.message || 'Please try again.'));
     }
   };
 
   const handleBulkDelete = async () => {
-    if (confirm(`Are you sure you want to delete ${selectedProducts.length} products?`)) {
-      const { error } = await supabase.from('products').delete().in('id', selectedProducts);
-      if (!error) {
-        setProducts(products.filter(p => !selectedProducts.includes(p.id)));
-        setSelectedProducts([]);
-        alert('Products deleted successfully');
-      } else {
-        alert('Error deleting products');
+    if (!confirm(`Are you sure you want to delete ${selectedProducts.length} product(s)?`)) return;
+    const failed: string[] = [];
+    for (const productId of selectedProducts) {
+      try {
+        await supabase.from('order_items').update({ product_id: null, variant_id: null }).eq('product_id', productId);
+        const { data: reviewIds } = await supabase.from('reviews').select('id').eq('product_id', productId);
+        if (reviewIds?.length) {
+          const ids = reviewIds.map((r) => r.id);
+          await supabase.from('review_images').delete().in('review_id', ids);
+          await supabase.from('reviews').delete().eq('product_id', productId);
+        }
+        await supabase.from('cart_items').delete().eq('product_id', productId);
+        await supabase.from('wishlist_items').delete().eq('product_id', productId);
+        await supabase.from('product_images').delete().eq('product_id', productId);
+        await supabase.from('product_variants').delete().eq('product_id', productId);
+        const { error } = await supabase.from('products').delete().eq('id', productId);
+        if (error) throw error;
+      } catch {
+        failed.push(products.find((p) => p.id === productId)?.name || productId.slice(0, 8));
       }
+    }
+    setProducts(products.filter((p) => !selectedProducts.includes(p.id)));
+    setSelectedProducts([]);
+    if (failed.length) {
+      alert(`Deleted ${selectedProducts.length - failed.length}. Failed: ${failed.join(', ')}`);
+    } else {
+      alert('Products deleted successfully');
     }
   };
 

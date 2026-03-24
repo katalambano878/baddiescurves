@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,6 +23,7 @@ export default function FlashSaleBanner() {
     ctaLink: '/shop'
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date().getTime();

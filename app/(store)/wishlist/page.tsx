@@ -33,7 +33,7 @@ export default function WishlistPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <PageHero title="My Wishlist" />
+      <PageHero title="My Wishlist" backgroundImage="/page-hero-4.jpeg" />
 
       <section className="py-8 bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -93,24 +93,39 @@ export default function WishlistPage() {
         </section>
       )}
 
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="bg-gradient-to-r from-blue-700 to-blue-800 rounded-2xl p-12 text-center text-white">
-            <h2 className="text-3xl font-bold mb-4">Share Your Wishlist</h2>
-            <p className="text-blue-100 mb-8 text-lg">Let friends and family know what you love</p>
-            <div className="flex justify-center space-x-4">
-              <button className="w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-lg transition-colors">
-                <i className="ri-facebook-fill text-xl"></i>
-              </button>
-              <button className="w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-lg transition-colors">
-                <i className="ri-twitter-x-fill text-xl"></i>
-              </button>
-              <button className="w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-lg transition-colors">
-                <i className="ri-whatsapp-fill text-xl"></i>
-              </button>
-              <button className="w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-lg transition-colors">
-                <i className="ri-mail-fill text-xl"></i>
-              </button>
+      <section className="py-24 relative bg-gray-50 overflow-hidden">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
+          <div className="relative bg-white p-12 sm:p-20 rounded-[3rem] border border-gray-100 shadow-[0_8px_40px_rgba(0,0,0,0.03)] text-center overflow-hidden group transition-all duration-700 hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)]">
+
+            {/* Ambient Subtle Lighting */}
+            <div className="absolute -top-32 -right-32 w-96 h-96 bg-blue-50/80 rounded-full blur-[100px] pointer-events-none group-hover:bg-blue-100/60 transition-colors duration-1000"></div>
+            <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-gray-50 rounded-full blur-[100px] pointer-events-none group-hover:bg-indigo-50/50 transition-colors duration-1000"></div>
+
+            {/* Inner Content */}
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-gray-50 to-white rounded-2xl flex items-center justify-center mb-8 border border-gray-100 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)] group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500">
+                <i className="ri-share-forward-line text-2xl text-gray-700 group-hover:text-black transition-colors duration-500"></i>
+              </div>
+
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight drop-shadow-sm">Share Your Wishlist</h2>
+              <p className="text-gray-500 mb-12 text-lg sm:text-xl font-light max-w-lg mx-auto leading-relaxed">Let friends and family know exactly what you love.</p>
+
+              <div className="flex items-center justify-center gap-4 sm:gap-6">
+                {[
+                  { icon: 'ri-facebook-fill' },
+                  { icon: 'ri-twitter-x-fill' },
+                  { icon: 'ri-whatsapp-fill' },
+                  { icon: 'ri-mail-fill' },
+                ].map((item, idx) => (
+                  <button
+                    key={idx}
+                    className="group/btn relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-400 hover:text-gray-900 hover:border-gray-300 hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 active:scale-95"
+                  >
+                    <i className={`${item.icon} text-xl sm:text-2xl transition-transform duration-300 group-hover/btn:scale-110`}></i>
+                    <div className="absolute inset-0 rounded-full bg-gray-50 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300 -z-10"></div>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

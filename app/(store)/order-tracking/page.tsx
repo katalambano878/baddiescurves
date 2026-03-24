@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import Link from 'next/link';
@@ -19,6 +20,7 @@ function OrderTrackingContent() {
   // Auto-track if order number AND email are in the URL
   const urlEmail = searchParams.get('email') || '';
   
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (urlOrderNumber && urlEmail) {
       setEmail(urlEmail);

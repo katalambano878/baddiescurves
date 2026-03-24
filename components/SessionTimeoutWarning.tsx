@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -10,6 +11,7 @@ export default function SessionTimeoutWarning() {
   const IDLE_TIMEOUT = 25 * 60 * 1000;
   const WARNING_TIME = 60 * 1000;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart'];
 

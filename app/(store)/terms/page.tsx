@@ -18,7 +18,7 @@ export default function TermsPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">1. Agreement to Terms</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              By accessing and using this website (multimeysupplies.com), you accept and agree to be bound by these Terms and Conditions. If you do not agree with any part of these terms, you must not use our website or services.
+              By accessing and using this website, you accept and agree to be bound by these Terms and Conditions. If you do not agree with any part of these terms, you must not use our website or services.
             </p>
             <p className="text-gray-600 leading-relaxed">
               These terms apply to all visitors, users, and customers who access or use our service. We reserve the right to update or modify these terms at any time without prior notice. Your continued use of the website following any changes indicates your acceptance of the new terms.
@@ -183,7 +183,7 @@ export default function TermsPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">7. Intellectual Property</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              All content on this website, including text, graphics, logos, images, videos, and software, is the property of MultiMey Supplies or its content suppliers and is protected by copyright, trademark, and other intellectual property laws.
+              All content on this website, including text, graphics, logos, images, videos, and software, is the property of the store or its content suppliers and is protected by copyright, trademark, and other intellectual property laws.
             </p>
             <p className="text-gray-600 leading-relaxed mb-4">
               You may not reproduce, distribute, modify, create derivative works of, publicly display, or otherwise use any content from this website without our express written permission.
@@ -227,7 +227,7 @@ export default function TermsPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">9. Limitation of Liability</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              To the fullest extent permitted by law, MultiMey Supplies shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from:
+              To the fullest extent permitted by law, the store shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from:
             </p>
             <ul className="space-y-2 text-gray-600 mb-6">
               <li className="flex items-start gap-2">
@@ -259,7 +259,7 @@ export default function TermsPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">10. Indemnification</h2>
             <p className="text-gray-600 leading-relaxed">
-              You agree to indemnify and hold harmless MultiMey Supplies, its affiliates, officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including legal fees) arising from your use of the website, violation of these terms, or infringement of any third-party rights.
+              You agree to indemnify and hold harmless the store, its affiliates, officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including legal fees) arising from your use of the website, violation of these terms, or infringement of any third-party rights.
             </p>
           </section>
 
@@ -281,38 +281,10 @@ export default function TermsPage() {
           </section>
 
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">13. Contact Information</h2>
-            <p className="text-gray-600 leading-relaxed mb-6">
-              For questions about these Terms and Conditions, please contact us:
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">13. Contact</h2>
+            <p className="text-gray-600 leading-relaxed">
+              For questions about these Terms and Conditions, please use the contact form on our website.
             </p>
-
-            <div className="bg-gray-50 border border-gray-200 p-8 rounded-xl">
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <i className="ri-mail-line text-blue-700 text-xl mt-1"></i>
-                  <div>
-                    <p className="font-medium text-gray-900">Email</p>
-                    <a href="mailto:support@multimeysupplies.com" className="text-blue-700 hover:underline">support@multimeysupplies.com</a>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <i className="ri-phone-line text-blue-700 text-xl mt-1"></i>
-                  <div>
-                    <p className="font-medium text-gray-900">Phone</p>
-                    <a href="tel:+233209597443" className="text-blue-700 hover:underline">+233 20 959 7443</a>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <i className="ri-map-pin-line text-blue-700 text-xl mt-1"></i>
-                  <div>
-                    <p className="font-medium text-gray-900">Address</p>
-                    <p className="text-gray-600">MultiMey Supplies<br />Accra, Ghana</p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </section>
 
           <div className="bg-blue-50 border-2 border-blue-200 p-8 rounded-xl text-center">

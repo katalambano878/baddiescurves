@@ -1,7 +1,7 @@
 -- ============================================================
 -- SECURITY FIX: Enable Row Level Security on ALL tables
--- Run this ENTIRE script in the Supabase SQL Editor:
--- https://supabase.com/dashboard/project/bskojprmfxugvkycvetc/sql/new
+-- Run this ENTIRE script in the Supabase SQL Editor for your project:
+-- https://supabase.com/dashboard/project/xjvfriognajusceztocl/sql/new
 -- ============================================================
 
 -- 1. ORDERS (users see only their own)

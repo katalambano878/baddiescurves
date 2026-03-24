@@ -82,39 +82,43 @@ export default function ProductCard({
   const formatPrice = (val: number) => `GH\u20B5${val.toFixed(2)}`;
 
   return (
-    <div className="group bg-transparent rounded-lg h-full flex flex-col hover-lift">
-      <Link href={`/product/${slug}`} className="relative block aspect-[3/4] overflow-hidden rounded-xl bg-gray-100 mb-4 shadow-sm group-hover:shadow-xl transition-all duration-300">
+    <div className="group flex flex-col h-full bg-white rounded-[1.5rem] border border-black/[0.04] p-2.5 sm:p-3 hover:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.06)] hover:border-black/[0.08] transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]">
+      <Link href={`/product/${slug}`} className="relative block aspect-[4/5] overflow-hidden rounded-[1rem] bg-[#FAFAFA] mb-5">
         <LazyImage
           src={image}
           alt={name}
-          className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
+          className="w-full h-full object-cover object-top transition-transform duration-1000 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] group-hover:scale-[1.04]"
         />
 
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
+        {/* Badges */}
+        <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
           {badge && (
-            <span className="bg-white/90 backdrop-blur text-gray-900 border border-gray-100 text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-md shadow-sm">
+            <span className="bg-white/80 backdrop-blur-xl text-gray-900 border border-white/40 text-[9px] uppercase tracking-[0.2em] font-bold px-3 py-1.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
               {badge}
             </span>
           )}
           {discount > 0 && (
-            <span className="bg-red-50 text-red-700 border border-red-100 text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-md shadow-sm">
+            <span className="bg-red-500/90 backdrop-blur-md text-white border border-red-500/20 text-[9px] uppercase tracking-[0.2em] font-bold px-3 py-1.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
               -{discount}%
             </span>
           )}
         </div>
 
+        {/* Out of stock overlay */}
         {!inStock && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
-            <span className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium">Out of Stock</span>
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-sm flex items-center justify-center z-10">
+            <span className="bg-black/90 text-white px-5 py-2.5 rounded-full text-sm font-medium tracking-wide shadow-xl">
+              Out of Stock
+            </span>
           </div>
         )}
 
+        {/* Hover Actions */}
         {inStock && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 hidden lg:block">
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hidden lg:flex z-20 bg-black/[0.02] backdrop-blur-[2px]">
             {hasVariants ? (
-              <span className="w-full bg-white text-gray-900 hover:bg-gray-900 hover:text-white py-3 rounded-lg font-medium shadow-lg transition-colors flex items-center justify-center space-x-2 text-sm">
-                <i className="ri-list-check"></i>
-                <span>Select Options</span>
+              <span className="bg-white/95 backdrop-blur-2xl text-gray-900 border border-white/40 hover:bg-gray-900 hover:text-white hover:border-gray-900 px-6 py-3.5 rounded-full text-[10px] uppercase tracking-[0.2em] font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 flex items-center justify-center space-x-2 translate-y-4 group-hover:translate-y-0">
+                <span>Configure</span>
               </span>
             ) : (
               <button
@@ -122,9 +126,8 @@ export default function ProductCard({
                   e.preventDefault();
                   addToCart({ id, name, price, image, quantity: moq, slug, maxStock, moq });
                 }}
-                className="w-full bg-white text-gray-900 hover:bg-gray-900 hover:text-white py-3 rounded-lg font-medium shadow-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                className="bg-white/95 backdrop-blur-2xl text-gray-900 border border-white/40 hover:bg-gray-900 hover:text-white hover:border-gray-900 px-6 py-3.5 rounded-full text-[10px] uppercase tracking-[0.2em] font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 flex items-center justify-center space-x-2 translate-y-4 group-hover:translate-y-0"
               >
-                <i className="ri-shopping-cart-2-line"></i>
                 <span>{moq > 1 ? `Add ${moq} to Cart` : 'Quick Add'}</span>
               </button>
             )}
@@ -132,15 +135,15 @@ export default function ProductCard({
         )}
       </Link>
 
-      <div className="flex flex-col flex-grow">
+      <div className="flex flex-col flex-grow px-2 items-center text-center pb-2">
         <Link href={`/product/${slug}`}>
-          <h3 className="font-serif text-lg leading-tight text-gray-900 mb-1 group-hover:text-blue-800 transition-colors line-clamp-2">
+          <h3 className="font-serif text-[15.5px] leading-[1.4] text-gray-900 mb-2 group-hover:text-black/60 transition-colors line-clamp-2">
             {name}
           </h3>
         </Link>
 
         {colorVariants.length > 0 && (
-          <div className="flex items-center gap-1.5 mb-2">
+          <div className="flex items-center justify-center gap-1.5 mb-3 mt-1">
             {colorVariants.slice(0, MAX_SWATCHES).map((color) => (
               <button
                 key={color.name}
@@ -149,39 +152,38 @@ export default function ProductCard({
                   e.preventDefault();
                   setActiveColor(activeColor === color.name ? null : color.name);
                 }}
-                className={`w-4 h-4 rounded-full border transition-all duration-200 flex-shrink-0 ${
-                  activeColor === color.name
-                    ? 'ring-2 ring-offset-1 ring-blue-600 scale-110'
-                    : 'hover:scale-110'
-                } ${color.hex === '#FFFFFF' ? 'border-gray-300' : 'border-transparent'}`}
+                className={`w-3.5 h-3.5 rounded-full border transition-all duration-300 flex-shrink-0 relative ${activeColor === color.name
+                    ? 'ring-1 ring-offset-2 ring-gray-900 scale-110'
+                    : 'hover:scale-110 ring-1 ring-transparent hover:ring-gray-300 hover:ring-offset-1'
+                  } ${color.hex === '#FFFFFF' ? 'border-gray-200' : 'border-transparent'}`}
                 style={{ backgroundColor: color.hex }}
               />
             ))}
             {colorVariants.length > MAX_SWATCHES && (
-              <span className="text-xs text-gray-400 ml-0.5">+{colorVariants.length - MAX_SWATCHES}</span>
+              <span className="text-[10px] text-gray-400 font-medium ml-1">+{colorVariants.length - MAX_SWATCHES}</span>
             )}
           </div>
         )}
 
-        <div className="flex items-baseline space-x-2 mb-2">
+        <div className="flex items-center justify-center space-x-2.5 mt-auto pt-2">
           {hasVariants && minVariantPrice ? (
-            <span className="text-gray-900 font-semibold">From {formatPrice(minVariantPrice)}</span>
+            <span className="text-gray-900 font-medium text-[13.5px] tracking-wide">From {formatPrice(minVariantPrice)}</span>
           ) : (
-            <span className="text-gray-900 font-semibold">{formatPrice(price)}</span>
+            <span className="text-gray-900 font-medium text-[13.5px] tracking-wide">{formatPrice(price)}</span>
           )}
           {originalPrice && (
-            <span className="text-sm text-gray-400 line-through">{formatPrice(originalPrice)}</span>
+            <span className="text-[12px] text-gray-400 line-through decoration-gray-300/70">{formatPrice(originalPrice)}</span>
           )}
         </div>
 
-        <div className="mt-auto pt-2 lg:hidden">
+        {/* Mobile Action Button */}
+        <div className="mt-4 w-full lg:hidden">
           {hasVariants ? (
             <Link
               href={`/product/${slug}`}
-              className="w-full border border-gray-200 text-gray-900 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center justify-center space-x-1"
+              className="w-full bg-gray-50/50 border border-gray-200 text-gray-900 py-2.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-semibold hover:bg-gray-100 active:bg-gray-200 transition-colors flex items-center justify-center"
             >
-              <i className="ri-list-check text-sm"></i>
-              <span>Select Options</span>
+              <span>Configure</span>
             </Link>
           ) : (
             <button
@@ -190,9 +192,9 @@ export default function ProductCard({
                 addToCart({ id, name, price, image, quantity: moq, slug, maxStock, moq });
               }}
               disabled={!inStock}
-              className="w-full border border-gray-200 text-gray-900 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gray-50/50 border border-gray-200 text-gray-900 py-2.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-semibold hover:bg-gray-100 active:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {moq > 1 ? `Add ${moq} to Cart` : 'Add to Cart'}
+              <span>{moq > 1 ? `Add ${moq}` : 'Add to Cart'}</span>
             </button>
           )}
         </div>

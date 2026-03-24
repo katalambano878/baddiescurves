@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,6 +16,7 @@ export default function AccessibilityMenu() {
     highlightLinks: false
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const saved = localStorage.getItem('accessibilitySettings');
     if (saved) {

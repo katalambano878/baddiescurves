@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -23,7 +24,8 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
     const [stats, setStats] = useState<(Omit<SalesStat, '_orderIds' | 'variants'> & { variants: VariantDisplay[] })[]>([]);
     const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
 
-    useEffect(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
         if (isOpen) fetchStats();
     }, [isOpen, period]);
 

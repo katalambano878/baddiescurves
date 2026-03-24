@@ -1,5 +1,5 @@
-// MultiMey Supplies - Service Worker v2.0
-const CACHE_VERSION = 'sl-v2.0';
+// Storefront Service Worker v2.1
+const CACHE_VERSION = 'sl-v2.1';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
 const IMAGE_CACHE = `images-${CACHE_VERSION}`;
@@ -14,7 +14,6 @@ const STATIC_ASSETS = [
   '/account',
   '/categories',
   '/offline',
-  '/logo.png',
 ];
 
 // Cache size limits
@@ -83,7 +82,18 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/payment')) return;
   if (url.pathname.startsWith('/api/notifications')) return;
 
-  // Skip admin routes
+  // Admin: Network only; on failure show "Admin requires internet" (never generic /offline)
+  if (url.pathname.startsWith('/admin') && (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html'))) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => response)
+        .catch(() => {
+          const html = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin – Connection required</title><style>body{font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;}.box{text-align:center;max-width:24rem;padding:2rem;}h1{font-size:1.5rem;color:#1e293b;margin-bottom:0.5rem;}p{color:#64748b;margin-bottom:1.5rem;}a{display:inline-block;background:#2563eb;color:#fff;padding:0.75rem 1.5rem;border-radius:0.5rem;text-decoration:none;font-weight:600;}a:hover{background:#1d4ed8;}</style></head><body><div class="box"><h1>Connection required</h1><p>Admin needs an internet connection. Check your network and try again.</p><a href="/admin">Try again</a></div></body></html>';
+          return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+        })
+    );
+    return;
+  }
   if (url.pathname.startsWith('/admin')) return;
 
   // Strategy: Images - Cache First (long-lived)
@@ -212,7 +222,7 @@ self.addEventListener('push', (event) => {
 
   const data = event.data.json();
   const options = {
-    body: data.body || 'New update from MultiMey Supplies',
+    body: data.body || "New update from BADDIECURVES",
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',
     vibrate: [100, 50, 100],
@@ -228,7 +238,7 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     self.registration.showNotification(
-      data.title || 'MultiMey Supplies',
+      data.title || "BADDIECURVES",
       options
     )
   );

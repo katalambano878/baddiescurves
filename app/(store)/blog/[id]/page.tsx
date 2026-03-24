@@ -19,7 +19,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
       category: 'Shopping Tips',
       date: 'December 15, 2024',
       readTime: '8 min read',
-      author: 'Ama Osei',
+      author: 'Staff Writer',
       content: `
         <p>Online shopping has revolutionised the way Ghanaians purchase products, offering convenience, variety, and competitive prices. However, navigating the world of ecommerce can be daunting if you're new to it. This comprehensive guide will help you shop online safely and confidently.</p>
 
@@ -28,7 +28,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
 
         <p>Moreover, online stores often offer exclusive deals and promotions that aren't available in physical shops. You can shop at any time of day or night, without worrying about store opening hours or traffic.</p>
 
-        <h2>Choosing a Reliable Online Store</h2>
+        <h2>Choosing a Reliable Beauty Store</h2>
         <p>Not all online stores are created equal. When shopping online, look for these trust signals:</p>
         <ul>
           <li><strong>Secure website:</strong> The URL should start with "https://" and display a padlock icon</li>
@@ -99,7 +99,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
       category: 'Home & Living',
       date: 'December 12, 2024',
       readTime: '6 min read',
-      author: 'Yaw Darko',
+      author: 'Staff Writer',
       content: `
         <p>Transform your living space with these carefully selected must-have products. Whether you're refreshing your décor or starting from scratch, these items will elevate your home's comfort and style.</p>
 
@@ -145,7 +145,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
       category: 'Buying Guide',
       date: 'December 10, 2024',
       readTime: '7 min read',
-      author: 'Kwame Mensah',
+      author: 'Staff Writer',
       content: `
         <p>In a market flooded with options, choosing quality products can be challenging. This guide will help you identify genuine quality and make purchasing decisions you won't regret.</p>
 

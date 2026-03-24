@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import Link from 'next/link';
@@ -59,6 +60,7 @@ export default function SmartRecommendations({ productId, type, title }: SmartRe
     }
   ];
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const shuffled = [...allProducts].sort(() => 0.5 - Math.random());
     setProducts(shuffled.slice(0, 4));

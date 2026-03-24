@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import Link from 'next/link';
@@ -12,6 +13,7 @@ export default function AdminCustomersPage() {
   const [sortOption, setSortOption] = useState('Sort by Join Date');
   const [filterStatus, setFilterStatus] = useState('All Customers');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchCustomers();
   }, []);

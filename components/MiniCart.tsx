@@ -33,41 +33,43 @@ export default function MiniCart({ isOpen, onClose }: MiniCartProps) {
         onClick={onClose}
       ></div>
 
-      <div className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 flex flex-col slide-in-right">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
+      <div className="fixed top-0 right-0 h-[100dvh] w-[500px] max-w-full bg-white shadow-2xl z-50 flex flex-col slide-in-right">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
+          <h2 className="text-[22px] font-bold text-[#111827]">
             Shopping Cart ({cart.reduce((sum, i) => sum + i.quantity, 0)})
           </h2>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
           >
-            <i className="ri-close-line text-2xl text-gray-700"></i>
+            <i className="ri-close-line text-2xl text-[#374151]"></i>
           </button>
         </div>
 
         {cart.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded-full mb-4">
-              <i className="ri-shopping-cart-line text-5xl text-gray-400"></i>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white min-h-0">
+            <div className="w-[130px] h-[130px] flex items-center justify-center bg-[#f3f4f6] rounded-full mb-6">
+              <i className="ri-shopping-cart-2-line text-[#9ca3af] text-[64px]"></i>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Your cart is empty</h3>
-            <p className="text-gray-600 mb-6">Add items to get started</p>
+            <h3 className="text-2xl font-bold text-[#111827] mb-2">Your cart is empty</h3>
+            <p className="text-[#6b7280] mb-8 text-[15px] max-w-[200px] leading-relaxed">
+              Add items to get started
+            </p>
             <Link
               href="/shop"
               onClick={onClose}
-              className="px-6 py-3 bg-blue-700 text-white rounded-lg font-semibold hover:bg-blue-800 transition-colors whitespace-nowrap cursor-pointer"
+              className="w-[240px] py-3.5 bg-[#4B4542] hover:bg-[#3D3836] text-white rounded-lg font-bold transition-colors text-center cursor-pointer shadow-sm text-[15px]"
             >
               Continue Shopping
             </Link>
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 min-h-0 bg-white">
+              <div className="space-y-6">
                 {cart.map((item) => (
-                  <div key={`${item.id}-${item.variant}`} className="flex space-x-4 bg-gray-50 rounded-lg p-4">
-                    <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
+                  <div key={`${item.id}-${item.variant}`} className="flex space-x-4">
+                    <div className="w-[100px] h-[100px] bg-white flex-shrink-0 border-0 rounded-md overflow-hidden">
                       <img
                         src={item.image}
                         alt={item.name}
@@ -75,78 +77,81 @@ export default function MiniCart({ isOpen, onClose }: MiniCartProps) {
                       />
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">{item.name}</h3>
+                    <div className="flex-1 min-w-0 pr-1 flex flex-col justify-center">
+                      <div className="flex justify-between items-start mb-0.5">
+                        <h3 className="font-bold text-[#111827] text-[17px] leading-tight line-clamp-2">{item.name}</h3>
+                        <button
+                          onClick={() => removeFromCart(item.id, item.variant)}
+                          className="text-[#ef4444] hover:text-red-700 transition-colors ml-4 cursor-pointer mt-0.5"
+                        >
+                          <i className="ri-delete-bin-line text-lg"></i>
+                        </button>
+                      </div>
+
                       {item.variant && (
-                        <p className="text-xs text-gray-600 mb-2">
-                          Variant: {item.variant}
+                        <p className="text-sm text-gray-500 mb-2">
+                          {item.variant}
                         </p>
                       )}
 
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-lg font-bold text-blue-700">
+                      <div className="flex items-center justify-between mt-auto">
+                        <span className="text-[17px] font-bold text-[#0A0F1D]">
                           GH₵{item.price.toFixed(2)}
                         </span>
 
-                        <div className="flex items-center border border-gray-300 rounded bg-white">
+                        <div className="flex items-center border border-gray-200 rounded text-[#111827] bg-white h-9 shadow-sm">
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1, item.variant)}
-                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer"
+                            className="w-9 h-full flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer text-[#4b5563]"
                           >
                             {item.quantity <= (item.moq || 1) ? (
-                              <i className="ri-delete-bin-line text-red-500"></i>
+                              <i className="ri-delete-bin-line text-[#ef4444]"></i>
                             ) : (
-                              <i className="ri-subtract-line text-gray-700"></i>
+                              <i className="ri-subtract-line"></i>
                             )}
                           </button>
-                          <span className="w-10 text-center font-semibold text-gray-900">{item.quantity}</span>
+                          <span className="w-10 text-center font-bold text-[15px]">{item.quantity}</span>
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity + 1, item.variant)}
-                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer"
+                            className="w-9 h-full flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer text-[#4b5563]"
                             disabled={item.quantity >= item.maxStock}
                           >
-                            <i className="ri-add-line text-gray-700"></i>
+                            <i className="ri-add-line"></i>
                           </button>
                         </div>
                       </div>
+
                       {item.quantity >= item.maxStock && (
                         <p className="text-xs text-amber-600 mt-1">Max stock reached</p>
                       )}
                     </div>
-
-                    <button
-                      onClick={() => removeFromCart(item.id, item.variant)}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-red-50 rounded-full transition-colors flex-shrink-0 cursor-pointer"
-                    >
-                      <i className="ri-delete-bin-line text-red-600"></i>
-                    </button>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="border-t border-gray-200 p-6 bg-gray-50">
+            <div className="border-t border-gray-100 p-6 bg-white shrink-0">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-gray-700 font-medium">Subtotal</span>
-                <span className="text-2xl font-bold text-gray-900">GH₵{subtotal.toFixed(2)}</span>
+                <span className="text-[#374151] font-[500] text-[17px]">Subtotal</span>
+                <span className="text-[24px] font-bold text-[#111827]">GH₵{subtotal.toFixed(2)}</span>
               </div>
 
-              <p className="text-sm text-gray-600 mb-4 text-center">
+              <p className="text-[15px] text-[#6b7280] mb-6 text-center">
                 Shipping calculated at checkout
               </p>
 
-              <div className="space-y-3">
+              <div className="space-y-3 flex flex-col items-center">
                 <Link
                   href="/checkout"
                   onClick={onClose}
-                  className="block w-full py-4 bg-blue-700 text-white text-center rounded-lg font-semibold hover:bg-blue-800 transition-colors whitespace-nowrap cursor-pointer"
+                  className="flex items-center justify-center w-[240px] max-w-full py-3.5 bg-[#0A0F1D] hover:bg-black text-white rounded-lg font-bold transition-colors cursor-pointer text-[15px]"
                 >
                   Proceed to Checkout
                 </Link>
                 <Link
                   href="/cart"
                   onClick={onClose}
-                  className="block w-full py-4 border-2 border-gray-900 text-gray-900 text-center rounded-lg font-semibold hover:bg-gray-50 transition-colors whitespace-nowrap cursor-pointer"
+                  className="flex items-center justify-center w-[240px] max-w-full py-3.5 border-2 border-gray-200 text-[#111827] bg-white hover:bg-gray-50 rounded-lg font-bold transition-colors cursor-pointer text-[15px]"
                 >
                   View Cart
                 </Link>

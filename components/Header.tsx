@@ -2,23 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import MiniCart from './MiniCart';
 import { useCart } from '@/context/CartContext';
 import { supabase } from '@/lib/supabase';
 import { useCMS } from '@/context/CMSContext';
-import AnnouncementBar from './AnnouncementBar';
-
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [wishlistCount, setWishlistCount] = useState(0);
   const [user, setUser] = useState<any>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const { cartCount, isCartOpen, setIsCartOpen } = useCart();
   const { getSetting } = useCMS();
 
-  const siteName = getSetting('site_name') || 'MultiMey Supplies';
+  const siteName = getSetting('site_name') || "BADDIECURVES";
+  const siteLogo = getSetting('site_logo') || '/logo.png?v=4';
+
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     // Wishlist logic
@@ -57,29 +65,27 @@ export default function Header() {
 
   return (
     <>
-      <AnnouncementBar />
-
-      <header className="bg-white sticky top-0 z-50 border-b border-gray-100 transition-all duration-300">
+      <header className="bg-white/70 backdrop-blur-3xl sticky top-0 z-50 border-b border-black/[0.04] shadow-[0_20px_40px_-24px_rgba(0,0,0,0.02)] transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] supports-[backdrop-filter]:bg-white/50">
         <div className="safe-area-top" />
         <nav aria-label="Main navigation" className="relative">
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="h-20 grid grid-cols-[auto_1fr_auto] items-center gap-4">
+            <div className="h-[5.5rem] grid grid-cols-[auto_1fr_auto] items-center gap-4">
 
               {/* Left: Mobile Menu Trigger (Mobile) & Logo */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <button
-                  className="lg:hidden p-2 -ml-2 text-gray-900 hover:text-gray-600 transition-colors"
+                  className={`lg:hidden p-2 -ml-2 rounded-full transition-all duration-500 active:scale-95 ${isScrolled ? 'text-gray-900 hover:bg-black/[0.06]' : 'text-gray-400 hover:text-gray-900 hover:bg-black/[0.02]'}`}
                   onClick={() => setIsMobileMenuOpen(true)}
                   aria-label="Open menu"
                 >
-                  <i className="ri-menu-line text-2xl"></i>
+                  <i className="ri-menu-line text-[22px] font-light"></i>
                 </button>
                 <Link
                   href="/"
-                  className="flex items-center select-none"
+                  className="flex items-center select-none opacity-90 transition-opacity duration-500 hover:opacity-100"
                   aria-label="Go to homepage"
                 >
-                  <img src="/logo.png" alt={siteName} className="h-9 md:h-11 w-auto object-contain" />
+                  <Image src={siteLogo} alt={siteName} width={140} height={44} className="h-9 w-auto md:h-11 object-contain object-left" priority />
                 </Link>
               </div>
 
@@ -94,32 +100,32 @@ export default function Header() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="group relative py-2 text-sm uppercase tracking-widest font-medium text-gray-900 transition-colors hover:text-gray-600"
+                    className={`group relative py-2 text-[11px] uppercase tracking-[0.2em] font-bold transition-colors duration-500 ${isScrolled ? 'text-gray-900 hover:text-gray-900' : 'text-gray-400 hover:text-gray-900'}`}
                   >
                     {link.label}
-                    <span className="absolute inset-x-0 bottom-0 h-px scale-x-0 bg-gray-900 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                    <span className="absolute inset-x-0 bottom-0 h-px origin-center scale-x-0 bg-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] group-hover:scale-x-100" />
                   </Link>
                 ))}
               </div>
 
               {/* Right: Icons */}
-              <div className="flex items-center justify-end space-x-2 sm:space-x-4">
+              <div className="flex items-center justify-end space-x-1 sm:space-x-2">
                 <button
-                  className="p-2 text-gray-900 hover:text-gray-600 transition-transform hover:scale-105"
+                  className={`p-2 sm:p-2.5 rounded-full transition-all duration-500 active:scale-95 ${isScrolled ? 'text-gray-900 hover:bg-black/[0.06]' : 'text-gray-400 hover:text-gray-900 hover:bg-black/[0.02]'}`}
                   onClick={() => setIsSearchOpen(true)}
                   aria-label="Search"
                 >
-                  <i className="ri-search-line text-xl"></i>
+                  <i className="ri-search-line text-[20px] font-light"></i>
                 </button>
 
                 <Link
                   href="/wishlist"
-                  className="p-2 text-gray-900 hover:text-gray-600 transition-transform hover:scale-105 relative hidden sm:block"
+                  className={`p-2 sm:p-2.5 rounded-full transition-all duration-500 active:scale-95 relative hidden sm:block ${isScrolled ? 'text-gray-900 hover:bg-black/[0.06]' : 'text-gray-400 hover:text-gray-900 hover:bg-black/[0.02]'}`}
                   aria-label="Wishlist"
                 >
-                  <i className="ri-heart-line text-xl"></i>
+                  <i className="ri-heart-line text-[20px] font-light"></i>
                   {wishlistCount > 0 && (
-                    <span className="absolute top-1 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-black text-[10px] font-bold text-white">
+                    <span className="absolute top-1 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-gray-900 text-[10px] font-medium text-white shadow-[0_2px_8px_rgba(0,0,0,0.1)] ring-2 ring-white/80">
                       {wishlistCount}
                     </span>
                   )}
@@ -128,33 +134,35 @@ export default function Header() {
                 {user ? (
                   <Link
                     href="/account"
-                    className="p-2 text-gray-900 hover:text-gray-600 transition-transform hover:scale-105 hidden sm:block"
+                    className={`p-2 sm:p-2.5 rounded-full transition-all duration-500 active:scale-95 hidden sm:block ${isScrolled ? 'text-gray-900 hover:bg-black/[0.06]' : 'text-gray-400 hover:text-gray-900 hover:bg-black/[0.02]'}`}
                     aria-label="Account"
                   >
-                    <i className="ri-user-line text-xl"></i>
+                    <i className="ri-user-line text-[20px] font-light"></i>
                   </Link>
                 ) : (
                   <Link
                     href="/auth/login"
-                    className="p-2 text-gray-900 hover:text-gray-600 transition-transform hover:scale-105 hidden sm:block"
+                    className={`p-2 sm:p-2.5 rounded-full transition-all duration-500 active:scale-95 hidden sm:block ${isScrolled ? 'text-gray-900 hover:bg-black/[0.06]' : 'text-gray-400 hover:text-gray-900 hover:bg-black/[0.02]'}`}
                     aria-label="Login"
                   >
-                    <i className="ri-user-line text-xl"></i>
+                    <i className="ri-user-line text-[20px] font-light"></i>
                   </Link>
                 )}
 
-                <div className="relative">
+                <div className="relative shrink-0">
                   <button
-                    className="p-2 text-gray-900 hover:text-gray-600 transition-transform hover:scale-105"
+                    className={`p-2 sm:p-2.5 rounded-full transition-all duration-500 active:scale-95 group ${isScrolled ? 'text-gray-900 hover:bg-black/[0.06]' : 'text-gray-400 hover:text-gray-900 hover:bg-black/[0.02]'}`}
                     onClick={() => setIsCartOpen(!isCartOpen)}
                     aria-label="Cart"
                   >
-                    <i className="ri-shopping-bag-line text-xl"></i>
-                    {cartCount > 0 && (
-                      <span className="absolute top-1 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-black text-[10px] font-bold text-white">
-                        {cartCount}
-                      </span>
-                    )}
+                    <div className="relative">
+                      <i className="ri-shopping-bag-line text-[20px] font-light"></i>
+                      {cartCount > 0 && (
+                        <span className="absolute -top-[5px] -right-[5px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-gray-900 text-[10px] font-medium text-white shadow-[0_2px_8px_rgba(0,0,0,0.1)] ring-[2px] ring-white transition-transform duration-500 group-active:scale-90">
+                          {cartCount}
+                        </span>
+                      )}
+                    </div>
                   </button>
                   <MiniCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
                 </div>
@@ -166,41 +174,37 @@ export default function Header() {
       </header>
 
       {isSearchOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-24">
-          <div className="bg-white rounded-lg w-full max-w-2xl mx-4 shadow-2xl">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">Search Products</h3>
-                <button
-                  onClick={() => setIsSearchOpen(false)}
-                  className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700"
-                >
-                  <i className="ri-close-line text-2xl"></i>
-                </button>
+        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4 sm:px-6">
+          <div
+            className="absolute inset-0 bg-gray-900/30 backdrop-blur-xl transition-opacity animate-in fade-in duration-500"
+            onClick={() => setIsSearchOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative w-full max-w-3xl bg-white/95 backdrop-blur-3xl rounded-[1.25rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-black/[0.04] overflow-hidden animate-in fade-in zoom-in-[0.98] slide-in-from-top-6 duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]">
+            <form onSubmit={handleSearch} className="relative flex items-center bg-gray-50/30">
+              <div className="absolute left-6 text-gray-400 pointer-events-none transition-colors duration-500 group-focus-within:text-gray-600">
+                <i className="ri-search-line text-[20px]"></i>
               </div>
-              <form onSubmit={handleSearch}>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search for products..."
-                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                    autoFocus
-                  />
-                  <button
-                    type="submit"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-blue-700 hover:text-blue-900"
-                  >
-                    <i className="ri-search-line text-xl"></i>
-                  </button>
-                </div>
-              </form>
-            </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search products, collections, categories..."
+                className="group w-full h-[64px] bg-transparent pl-[60px] pr-20 text-[17px] font-light text-gray-800 placeholder:text-gray-400 caret-gray-400 focus:outline-none focus:ring-0 border-0"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="absolute right-5 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-black/[0.03] transition-all duration-300"
+                aria-label="Close search"
+              >
+                <i className="ri-close-line text-[20px] font-medium"></i>
+              </button>
+            </form>
           </div>
         </div>
-      )
-      }
+      )}
 
       {/* Mobile Menu Drawer */}
       {isMobileMenuOpen && (
@@ -212,8 +216,8 @@ export default function Header() {
           />
           <div className="absolute top-0 left-0 bottom-0 w-4/5 max-w-xs bg-white shadow-xl flex flex-col animate-in slide-in-from-left duration-300">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-              <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
-                <img src="/logo.png" alt={siteName} className="h-8 w-auto object-contain" />
+              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center">
+                <Image src={siteLogo} alt={siteName} width={120} height={38} className="h-8 w-auto object-contain object-left" />
               </Link>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}

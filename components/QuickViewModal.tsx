@@ -85,7 +85,7 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                           selectedImage === index ? 'border-blue-700' : 'border-transparent hover:border-gray-300'
                         }`}
                       >
-                        <Image src={image} alt="" fill className="object-cover object-top" sizes="12vw" quality={50} />
+                        <Image src={image} alt="" fill className="object-cover object-top" sizes="12vw" quality={50} loading="lazy" />
                       </button>
                     ))}
                   </div>

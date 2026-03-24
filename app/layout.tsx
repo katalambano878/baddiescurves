@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-page-custom-font */
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { CartProvider } from "@/context/CartContext";
@@ -11,30 +12,31 @@ export const viewport: Viewport = {
   themeColor: '#2563eb',
 };
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.multimeysupplies.com';
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://example.com';
 
+// Favicon and OG assets come from public/
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "MultiMey Supplies | Quality Products & Supplies",
-    template: "%s | MultiMey Supplies"
+    default: "BADDIECURVES",
+    template: "%s | BADDIECURVES"
   },
-  description: "Shop dresses, electronics, bags, shoes & more at MultiMey Supplies. Locally sourced and imported quality products delivered across Ghana from Accra.",
+  description: "Waist trainers, shapewear, post-op & activewear. Fashionable, confident style for every curve. Shop durable quality athleisure at Baddiescurves.",
   keywords: [
-    "MultiMey Supplies",
-    "Online Store Ghana",
-    "Buy Dresses Online Ghana",
-    "Electronics Ghana",
-    "Bags and Shoes Accra",
-    "China Import Ghana",
-    "Affordable Fashion Ghana",
-    "Accra Online Shopping",
-    "Ghana E-commerce",
-    "Quality Products Accra"
+    "Baddiescurves",
+    "waist trainers",
+    "shapewear",
+    "post op",
+    "activewear",
+    "athleisure",
+    "curves",
+    "confidence"
   ],
-  authors: [{ name: "MultiMey Supplies" }],
-  creator: "MultiMey Supplies",
-  publisher: "MultiMey Supplies",
+  authors: [{ name: "BADDIECURVES" }],
+  creator: "BADDIECURVES",
+  publisher: "BADDIECURVES",
+  applicationName: "BADDIECURVES",
+  referrer: "origin-when-cross-origin",
   robots: {
     index: true,
     follow: true,
@@ -48,61 +50,47 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icons/icon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/icons/icon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icons/icon-48x48.png', sizes: '48x48', type: 'image/png' },
-      { url: '/icons/icon-96x96.png', sizes: '96x96', type: 'image/png' },
-      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/logo.png?v=5', sizes: 'any', type: 'image/png' },
+      { url: '/favicon.ico?v=5', sizes: 'any' },
     ],
-    apple: [
-      { url: '/icons/icon-152x152.png', sizes: '152x152', type: 'image/png' },
-      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-384x384.png', sizes: '384x384', type: 'image/png' },
-      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
-    ],
-    shortcut: '/favicon.png',
+    shortcut: '/logo.png?v=5',
+    apple: '/logo.png?v=5',
   },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'MultiMey Supplies',
+    title: "BADDIECURVES",
   },
   formatDetection: {
     telephone: true,
+    email: false,
+    address: false,
   },
   verification: {
-    // Add your Google Search Console verification code here
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '',
   },
   openGraph: {
     type: "website",
     locale: "en_GH",
     url: siteUrl,
-    title: "MultiMey Supplies | Quality Products & Supplies",
-    description: "Shop dresses, electronics, bags, shoes and more. Locally sourced and China-imported quality products delivered across Ghana.",
-    siteName: "MultiMey Supplies",
+    title: "BADDIECURVES",
+    description: "Waist trainers, shapewear, post-op & activewear. Fashionable, confident style for every curve. Shop durable quality athleisure at Baddiescurves.",
+    siteName: "BADDIECURVES",
     images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "MultiMey Supplies",
-      },
+      { url: "/OG.jpg?v=2", width: 1200, height: 630, alt: "BADDIECURVES", type: "image/jpeg" },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MultiMey Supplies | Quality Products & Supplies",
-    description: "Dresses, electronics, bags, shoes and more. Quality products delivered across Ghana from Accra.",
-    images: ["/og-image.png"],
-    creator: "@mey_phua",
+    title: "BADDIECURVES",
+    description: "Waist trainers, shapewear, post-op & activewear. Fashionable, confident style for every curve. Shop durable quality athleisure at Baddiescurves.",
+    images: ["/OG.jpg?v=2"],
   },
   alternates: {
     canonical: siteUrl,
   },
+  category: "shopping",
 };
 
 // Google Analytics Measurement ID
@@ -122,19 +110,18 @@ export default function RootLayout({
         <meta name="theme-color" content="#2563eb" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="MultiMey Supplies" />
+        <meta name="apple-mobile-web-app-title" content="BADDIECURVES" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-TileColor" content="#2563eb" />
         <meta name="msapplication-tap-highlight" content="no" />
 
-        {/* Apple Touch Icons */}
-        <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
-        <link rel="apple-touch-icon" sizes="384x384" href="/icons/icon-384x384.png" />
-        <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
+        {/* Favicon from current logo */}
+        <link rel="icon" href="/logo.png?v=5" type="image/png" sizes="any" />
+        <link rel="shortcut icon" href="/logo.png?v=5" />
 
-        {/* Apple Splash Screens */}
-        <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
+        {/* Apple Touch Icons from public */}
+        <link rel="apple-touch-icon" href="/logo.png?v=5" />
+        <link rel="apple-touch-startup-image" href="/logo.png?v=5" />
 
         <link
           href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css"
@@ -151,20 +138,9 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Organization",
-              "name": "MultiMey Supplies",
-              "url": "https://www.multimeysupplies.com",
-              "logo": "https://www.multimeysupplies.com/logo.png",
-              "description": "Shop dresses, electronics, bags, shoes and more at MultiMey Supplies. Locally sourced and China-imported quality products delivered across Ghana from Accra.",
-              "address": {
-                "@type": "PostalAddress",
-                "addressCountry": "GH",
-                "addressLocality": "Accra"
-              },
-              "contactPoint": {
-                "@type": "ContactPoint",
-                "contactType": "customer service",
-                "availableLanguage": "English"
-              }
+              "name": "BADDIECURVES",
+              "url": siteUrl,
+              "description": "Waist trainers, shapewear, post-op & activewear. Fashionable, confident style for every curve. Shop durable quality athleisure at Baddiescurves."
             })
           }}
         />

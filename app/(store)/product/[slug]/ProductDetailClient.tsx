@@ -263,11 +263,12 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
     category: product.category
   });
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://example.com');
   const breadcrumbSchema = generateBreadcrumbSchema([
-    { name: 'Home', url: 'https://standardecom.com' },
-    { name: 'Shop', url: 'https://standardecom.com/shop' },
-    { name: product.category, url: `https://standardecom.com/shop?category=${product.category.toLowerCase().replace(/\s+/g, '-')}` },
-    { name: product.name, url: `https://standardecom.com/product/${slug}` }
+    { name: 'Home', url: baseUrl },
+    { name: 'Shop', url: `${baseUrl}/shop` },
+    { name: product.category, url: `${baseUrl}/shop?category=${product.category.toLowerCase().replace(/\s+/g, '-')}` },
+    { name: product.name, url: `${baseUrl}/product/${slug}` }
   ]);
 
   return (
@@ -327,6 +328,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                           className="object-cover object-center"
                           sizes="(max-width: 1024px) 25vw, 12vw"
                           quality={60}
+                          loading="lazy"
                         />
                       </button>
                     ))}
@@ -334,58 +336,58 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                 )}
               </div>
 
-              <div>
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="text-sm text-blue-700 font-semibold mb-2">{product.category}</p>
-                    <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-3">{product.name}</h1>
+              <div className="flex flex-col xl:pl-8">
+                <div className="flex flex-col mb-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <p className="text-[11px] tracking-[0.2em] text-gray-500 uppercase font-bold">{product.category}</p>
+                    <button
+                      onClick={() => setIsWishlisted(!isWishlisted)}
+                      className="group w-10 h-10 flex items-center justify-center bg-white border border-black/[0.04] hover:border-black/[0.08] rounded-full transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md"
+                    >
+                      <i className={`${isWishlisted ? 'ri-heart-fill text-red-500 scale-110' : 'ri-heart-line text-gray-400 group-hover:text-gray-600'} text-lg transition-all`}></i>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setIsWishlisted(!isWishlisted)}
-                    className="w-12 h-12 flex items-center justify-center border-2 border-gray-200 hover:border-blue-700 rounded-full transition-colors cursor-pointer"
-                  >
-                    <i className={`${isWishlisted ? 'ri-heart-fill text-red-600' : 'ri-heart-line text-gray-700'} text-xl`}></i>
-                  </button>
+                  <h1 className="text-3xl md:text-4xl lg:text-[44px] font-serif font-medium text-gray-900 leading-[1.1] tracking-tight">{product.name}</h1>
                 </div>
 
-                <div className="flex items-center mb-6">
-                  <div className="flex items-center space-x-1 mr-3">
+                <div className="flex items-center mb-7">
+                  <div className="flex items-center space-x-0.5 mr-3">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <i
                         key={star}
-                        className={`${star <= Math.round(product.rating) ? 'ri-star-fill text-amber-400' : 'ri-star-line text-gray-300'} text-lg`}
+                        className={`${star <= Math.round(product.rating) ? 'ri-star-fill text-gray-900' : 'ri-star-line text-gray-200'} text-[17px]`}
                       ></i>
                     ))}
                   </div>
-                  <span className="text-gray-700 font-medium">{Number(product.rating).toFixed(1)}</span>
+                  <span className="text-gray-500 text-sm font-medium">{Number(product.rating).toFixed(1)}</span>
                 </div>
 
-                <div className="flex items-baseline space-x-4 mb-6">
+                <div className="flex items-baseline space-x-3 mb-8">
                   {hasVariants && !selectedVariant ? (
-                    <span className="text-3xl lg:text-4xl font-bold text-gray-900">
-                      From GH₵{minVariantPrice.toFixed(2)}
+                    <span className="text-2xl lg:text-[30px] font-medium text-gray-900">
+                      <span className="text-lg text-gray-400 font-light mr-1.5">From</span>GH₵{minVariantPrice.toFixed(2)}
                     </span>
                   ) : (
-                    <span className="text-3xl lg:text-4xl font-bold text-gray-900">GH₵{activePrice.toFixed(2)}</span>
+                    <span className="text-2xl lg:text-[30px] font-medium text-gray-900">GH₵{activePrice.toFixed(2)}</span>
                   )}
                   {product.compare_at_price && product.compare_at_price > activePrice && (
-                    <span className="text-xl text-gray-400 line-through">GH₵{product.compare_at_price.toFixed(2)}</span>
+                    <span className="text-lg text-gray-400 line-through decoration-gray-300">GH₵{product.compare_at_price.toFixed(2)}</span>
                   )}
                 </div>
 
-                <p className="text-gray-700 leading-relaxed mb-8 text-lg">{product.description}</p>
+                <p className="text-gray-500 leading-[1.8] mb-10 text-[15.5px] font-light max-w-[95%]">{product.description}</p>
 
                 {/* Color Selector */}
                 {hasVariants && product.colors.length > 0 && (
-                  <div className="mb-6">
-                    <label className="block font-semibold text-gray-900 mb-3">
+                  <div className="mb-8">
+                    <label className="block text-sm font-medium text-gray-900 mb-3 tracking-wide">
                       Color: {selectedColor ? (
-                        <span className="text-blue-700 font-normal">{selectedColor}</span>
+                        <span className="text-gray-500 font-normal ml-1">{selectedColor}</span>
                       ) : (
-                        <span className="text-red-500 font-normal text-sm">Please select a color</span>
+                        <span className="text-red-400 font-normal text-xs ml-1">Please select a color</span>
                       )}
                     </label>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2.5">
                       {product.colors.map((color: string) => {
                         const isSelected = selectedColor === color;
                         const colorVariants = product.variants.filter((v: any) => v.color === color);
@@ -408,14 +410,14 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                               }
                             }}
                             disabled={isOutOfStock}
-                            className={`px-5 py-2.5 rounded-full border-2 font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${isSelected
-                              ? 'border-blue-700 bg-blue-50 text-blue-700 shadow-sm'
+                            className={`px-4 py-2 rounded-xl border font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-2.5 text-[14px] ${isSelected
+                              ? 'border-gray-900 ring-1 ring-gray-900/10 bg-white text-gray-900 shadow-sm'
                               : isOutOfStock
-                                ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50/50'
+                                : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50/50'
                               }`}
                           >
-                            <span className="w-5 h-5 rounded-full border border-gray-300 flex-shrink-0 shadow-sm" style={{ backgroundColor: product.colorHexMap?.[color] || colorNameToHex(color) }}></span>
+                            <span className="w-4 h-4 rounded-full border border-black/10 flex-shrink-0" style={{ backgroundColor: product.colorHexMap?.[color] || colorNameToHex(color) }}></span>
                             <span>{color}</span>
                           </button>
                         );
@@ -442,14 +444,14 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                     // Single variant with no colors — show standard picker
                     return (
                       <div className="mb-8">
-                        <label className="block font-semibold text-gray-900 mb-3">
+                        <label className="block text-sm font-medium text-gray-900 mb-3 tracking-wide">
                           Variant: {selectedVariant ? (
-                            <span className="text-blue-700 font-normal">{selectedVariant.name} — GH₵{selectedVariant.price?.toFixed(2)}</span>
+                            <span className="text-gray-500 font-normal ml-1">{selectedVariant.name}</span>
                           ) : (
-                            <span className="text-red-500 font-normal text-sm">Please select a variant</span>
+                            <span className="text-red-400 font-normal text-xs ml-1">Please select a variant</span>
                           )}
                         </label>
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-2.5">
                           {product.variants.map((variant: any) => {
                             const isSelected = selectedVariant?.id === variant.id || selectedVariant?.name === variant.name;
                             const variantStock = variant.stock ?? variant.quantity ?? 0;
@@ -462,15 +464,15 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                                   setSelectedSize(variant.name);
                                 }}
                                 disabled={isOutOfStock}
-                                className={`px-6 py-3 rounded-lg border-2 font-medium transition-all whitespace-nowrap cursor-pointer flex flex-col items-center ${isSelected
-                                  ? 'border-blue-700 bg-blue-50 text-blue-700 shadow-sm'
+                                className={`px-5 py-2.5 rounded-xl border font-medium transition-all whitespace-nowrap cursor-pointer flex flex-col items-center min-w-[5rem] ${isSelected
+                                  ? 'border-gray-900 ring-1 ring-gray-900/10 bg-white text-gray-900 shadow-sm'
                                   : isOutOfStock
-                                    ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                    ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50/50'
+                                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50/50'
                                   }`}
                               >
-                                <span>{variant.name}</span>
-                                <span className={`text-xs mt-0.5 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`}>
+                                <span className="text-[14px]">{variant.name}</span>
+                                <span className={`text-[11px] mt-0.5 ${isSelected ? 'text-gray-500' : 'text-gray-400'}`}>
                                   GH₵{(variant.price || product.price).toFixed(2)}
                                 </span>
                               </button>
@@ -484,14 +486,14 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                   if (visibleVariants.length > 1) {
                     return (
                       <div className="mb-8">
-                        <label className="block font-semibold text-gray-900 mb-3">
+                        <label className="block text-sm font-medium text-gray-900 mb-3 tracking-wide">
                           Size / Type: {selectedVariant ? (
-                            <span className="text-blue-700 font-normal">{selectedVariant.name} — GH₵{selectedVariant.price?.toFixed(2)}</span>
+                            <span className="text-gray-500 font-normal ml-1">{selectedVariant.name}</span>
                           ) : (
-                            <span className="text-red-500 font-normal text-sm">Please select</span>
+                            <span className="text-red-400 font-normal text-xs ml-1">Please select</span>
                           )}
                         </label>
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-2.5">
                           {visibleVariants.map((variant: any) => {
                             const isSelected = selectedVariant?.id === variant.id;
                             const variantStock = variant.stock ?? variant.quantity ?? 0;
@@ -504,15 +506,15 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                                   setSelectedSize(variant.name);
                                 }}
                                 disabled={isOutOfStock}
-                                className={`px-6 py-3 rounded-lg border-2 font-medium transition-all whitespace-nowrap cursor-pointer flex flex-col items-center ${isSelected
-                                  ? 'border-blue-700 bg-blue-50 text-blue-700 shadow-sm'
+                                className={`px-5 py-2.5 rounded-xl border font-medium transition-all whitespace-nowrap cursor-pointer flex flex-col items-center min-w-[4.5rem] ${isSelected
+                                  ? 'border-gray-900 ring-1 ring-gray-900/10 bg-white text-gray-900 shadow-sm'
                                   : isOutOfStock
-                                    ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                    ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50/50'
+                                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50/50'
                                   }`}
                               >
-                                <span>{variant.name}</span>
-                                <span className={`text-xs mt-0.5 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`}>
+                                <span className="text-[14px]">{variant.name}</span>
+                                <span className={`text-[11px] mt-0.5 ${isSelected ? 'text-gray-500' : 'text-gray-400'}`}>
                                   GH₵{(variant.price || product.price).toFixed(2)}
                                 </span>
                               </button>
@@ -526,56 +528,56 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                   return null;
                 })()}
 
-                <div className="mb-8">
-                  <label className="block font-semibold text-gray-900 mb-3">Quantity</label>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center border-2 border-gray-300 rounded-lg">
+                <div className="mb-10">
+                  <label className="block text-sm font-medium text-gray-900 mb-3 tracking-wide">Quantity</label>
+                  <div className="flex items-center space-x-5">
+                    <div className="flex items-center bg-gray-50/80 rounded-xl border border-black/[0.04]">
                       <button
                         onClick={() => setQuantity(Math.max(product.moq || 1, quantity - 1))}
-                        className="w-12 h-12 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                        className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-white transition-all rounded-l-xl cursor-pointer"
                         disabled={activeStock === 0 || quantity <= (product.moq || 1)}
                       >
-                        <i className="ri-subtract-line text-xl"></i>
+                        <i className="ri-subtract-line text-lg"></i>
                       </button>
                       <input
                         type="number"
                         value={quantity}
                         onChange={(e) => setQuantity(Math.max(product.moq || 1, Math.min(activeStock, parseInt(e.target.value) || (product.moq || 1))))}
-                        className="w-16 h-12 text-center border-x-2 border-gray-300 focus:outline-none text-lg font-semibold"
+                        className="w-14 h-12 text-center bg-transparent border-none focus:ring-0 text-[15px] font-medium text-gray-900"
                         min={product.moq || 1}
                         max={activeStock}
                         disabled={activeStock === 0}
                       />
                       <button
                         onClick={() => setQuantity(Math.min(activeStock, quantity + 1))}
-                        className="w-12 h-12 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                        className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-white transition-all rounded-r-xl cursor-pointer"
                         disabled={activeStock === 0}
                       >
-                        <i className="ri-add-line text-xl"></i>
+                        <i className="ri-add-line text-lg"></i>
                       </button>
                     </div>
                     <div className="flex flex-col">
                       {product.moq > 1 && (
-                        <span className="text-blue-700 font-medium text-sm">
-                          <i className="ri-information-line mr-1"></i>
+                        <span className="text-gray-500 font-medium text-xs tracking-wide">
+                          <i className="ri-information-line mr-1 text-gray-400"></i>
                           Min. order: {product.moq} units
                         </span>
                       )}
                       {activeStock > 10 && (
-                        <span className="text-gray-600 font-medium text-sm">
-                          <i className="ri-checkbox-circle-line mr-1 text-blue-600"></i>
+                        <span className="text-gray-500 font-medium text-xs flex items-center tracking-wide">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-2 shadow-[0_0_8px_rgba(52,211,153,0.5)] animate-pulse"></span>
                           {activeStock} in stock
                         </span>
                       )}
                       {activeStock > 0 && activeStock <= 10 && (
-                        <span className="text-amber-600 font-medium text-sm">
-                          <i className="ri-error-warning-line mr-1"></i>
-                          Only {activeStock} left in stock
+                        <span className="text-amber-600 font-medium text-xs flex items-center tracking-wide">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-2 shadow-[0_0_8px_rgba(251,191,36,0.5)] pulse-fast"></span>
+                          Only {activeStock} left
                         </span>
                       )}
                       {activeStock === 0 && (
-                        <span className="text-red-600 font-medium">
-                          <i className="ri-close-circle-line mr-1"></i>
+                        <span className="text-gray-400 font-medium text-xs flex items-center tracking-wide">
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-300 mr-2"></span>
                           Out of Stock
                         </span>
                       )}
@@ -583,42 +585,43 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                <div className="flex flex-col sm:flex-row gap-3.5 mb-10">
                   <button
                     disabled={activeStock === 0 || needsVariantSelection || needsColorSelection}
-                    className={`flex-1 bg-gray-900 hover:bg-blue-700 text-white py-4 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 text-lg whitespace-nowrap cursor-pointer ${(activeStock === 0 || needsVariantSelection || needsColorSelection) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex-1 group relative overflow-hidden bg-gray-900 text-white py-4 px-6 rounded-xl font-medium transition-all duration-500 flex items-center justify-center space-x-2.5 text-[15px] shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 whitespace-nowrap cursor-pointer ${(activeStock === 0 || needsVariantSelection || needsColorSelection) ? 'opacity-50 cursor-not-allowed hover:-translate-y-0' : ''}`}
                     onClick={handleAddToCart}
                   >
-                    <i className="ri-shopping-cart-line text-xl"></i>
-                    <span>{activeStock === 0 ? 'Out of Stock' : needsColorSelection ? 'Select a Color' : needsVariantSelection ? 'Select a Variant' : 'Add to Cart'}</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+                    <i className="ri-shopping-cart-2-line text-lg relative z-10"></i>
+                    <span className="relative z-10 tracking-wide">{activeStock === 0 ? 'Out of Stock' : needsColorSelection ? 'Select a Color' : needsVariantSelection ? 'Select a Variant' : 'Add to Cart'}</span>
                   </button>
                   {activeStock > 0 && !needsVariantSelection && !needsColorSelection && (
                     <button
                       onClick={handleBuyNow}
-                      className="sm:w-auto bg-blue-700 hover:bg-blue-800 text-white px-8 py-4 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer"
+                      className="sm:w-[160px] bg-white border border-black/[0.06] hover:border-black/[0.12] hover:bg-gray-50 text-gray-900 py-4 rounded-xl font-medium transition-all duration-300 whitespace-nowrap cursor-pointer shadow-sm tracking-wide"
                     >
                       Buy Now
                     </button>
                   )}
                 </div>
 
-                <div className="border-t border-gray-200 pt-6 space-y-4">
-                  <div className="flex items-center text-gray-700">
-                    <i className="ri-store-2-line text-xl text-blue-700 mr-3"></i>
+                <div className="border-t border-black/[0.04] pt-8 space-y-4">
+                  <div className="flex items-center text-gray-500 text-[14px] font-light">
+                    <i className="ri-store-2-line text-lg text-gray-400 mr-3.5"></i>
                     <span>Free store pickup available</span>
                   </div>
-                  <div className="flex items-center text-gray-700">
-                    <i className="ri-arrow-left-right-line text-xl text-blue-700 mr-3"></i>
+                  <div className="flex items-center text-gray-500 text-[14px] font-light">
+                    <i className="ri-arrow-left-right-line text-lg text-gray-400 mr-3.5"></i>
                     <span>30-day easy returns and exchanges</span>
                   </div>
-                  <div className="flex items-center text-gray-700">
-                    <i className="ri-shield-check-line text-xl text-blue-700 mr-3"></i>
+                  <div className="flex items-center text-gray-500 text-[14px] font-light">
+                    <i className="ri-shield-check-line text-lg text-gray-400 mr-3.5"></i>
                     <span>Secure payment & buyer protection</span>
                   </div>
                   {product.sku && (
-                    <div className="flex items-center text-gray-700">
-                      <i className="ri-barcode-line text-xl text-blue-700 mr-3"></i>
-                      <span>SKU: {product.sku}</span>
+                    <div className="flex items-center text-gray-500 text-[14px] font-light">
+                      <i className="ri-barcode-line text-lg text-gray-400 mr-3.5"></i>
+                      <span>SKU <span className="text-gray-400 ml-1.5">{product.sku}</span></span>
                     </div>
                   )}
                 </div>

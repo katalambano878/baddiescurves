@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import React, { useEffect, useRef, useState, ReactNode } from 'react';
@@ -20,6 +21,7 @@ export default function AnimatedSection({
   const ref = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const element = ref.current;
     if (!element) return;

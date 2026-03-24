@@ -9,7 +9,7 @@ export default function BlogPage() {
     category: 'Shopping Tips',
     date: 'December 15, 2024',
     readTime: '8 min read',
-    author: 'Ama Osei'
+    author: 'Staff Writer'
   };
 
   const posts = [
@@ -21,7 +21,7 @@ export default function BlogPage() {
       category: 'Home & Living',
       date: 'December 12, 2024',
       readTime: '6 min read',
-      author: 'Yaw Darko'
+      author: 'Staff Writer'
     },
     {
       id: '3',
@@ -31,7 +31,7 @@ export default function BlogPage() {
       category: 'Buying Guide',
       date: 'December 10, 2024',
       readTime: '7 min read',
-      author: 'Kwame Mensah'
+      author: 'Staff Writer'
     },
     {
       id: '1',
@@ -41,7 +41,7 @@ export default function BlogPage() {
       category: 'Shopping Tips',
       date: 'December 15, 2024',
       readTime: '8 min read',
-      author: 'Ama Osei'
+      author: 'Staff Writer'
     }
   ];
 
@@ -239,7 +239,7 @@ export default function BlogPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold text-white mb-4">Ready to Start Shopping?</h2>
           <p className="text-xl text-blue-100 mb-8 leading-relaxed">
-            Browse our range of dresses, electronics, bags, shoes and more
+            Browse waist trainers, shapewear, post-op wear and athleisure — quality for every curve
           </p>
           <Link
             href="/shop"

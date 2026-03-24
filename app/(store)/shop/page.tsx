@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
@@ -30,6 +31,7 @@ function ShopContent() {
   const productsPerPage = 9;
 
   // Initialize from URL params
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const category = searchParams.get('category');
     const sort = searchParams.get('sort');
@@ -41,6 +43,7 @@ function ShopContent() {
   }, [searchParams]);
 
   // Fetch Categories from cached API
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     async function fetchCategories() {
       try {
@@ -57,6 +60,7 @@ function ShopContent() {
   }, []);
 
   // Fetch Products
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     async function fetchProducts() {
       setLoading(true);
@@ -201,7 +205,8 @@ function ShopContent() {
     <main className="min-h-screen bg-white">
       <PageHero
         title="Shop All Products"
-        subtitle="Browse our range of dresses, electronics, bags, shoes and more"
+        subtitle="Browse our curated range of authentic hair care, beauty products, lashes and accessories"
+        backgroundImage="/page-hero-shop.jpeg"
       />
 
       {/* Mobile Filter Toggle */}

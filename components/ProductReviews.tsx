@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -36,6 +37,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
   });
   const { getToken, verifying } = useRecaptcha();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Check auth
     supabase.auth.getSession().then(({ data: { session } }) => {

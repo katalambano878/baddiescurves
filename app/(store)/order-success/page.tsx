@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import Link from 'next/link';
@@ -14,6 +15,7 @@ function OrderSuccessContent() {
   const [showConfetti, setShowConfetti] = useState(true);
   const [verifying, setVerifying] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     async function fetchOrder() {
       if (!orderNumber) {

@@ -3,9 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-
 const mockOrders = [
   {
     id: 'ORD-2024-156',
@@ -78,12 +75,22 @@ export default function ReturnsPortalPage() {
   };
 
   return (
-    <>
-      <Header />
-      <main className="min-h-screen bg-gray-50 py-12">
+    <main className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-4xl mx-auto px-4">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Returns Portal</h1>
-          <p className="text-gray-600 mb-8">Start your return or exchange process</p>
+          <p className="text-gray-600 mb-6">Start your return or exchange — BADDIECURVES accepts returns within the US for eligible items. All returns are processed as store credit.</p>
+
+          <div className="mb-8 p-6 bg-white rounded-xl border border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Additional Return Policy</h2>
+            <div className="text-gray-600 text-sm space-y-4 leading-relaxed">
+              <p>To help ensure you get the best fit, BADDIECURVES accepts returns within the United States for eligible items returned in new condition with original packaging and tags. Additional restocking fees may apply to items not returned in original condition (tags and bagging). The customer is responsible for all shipping fees to and from. If you need to return more than one item, it is suggested that all items are processed in the same request and sent back in one package with the return label.</p>
+              <p>This does not guarantee that you will be able to exchange for the exact same item. Returns are only eligible for options available on the return platform at the time the return is submitted. If we are out of stock of a particular product, we may issue you a store credit for a different item (meaning you may have to utilize the credit toward a different color or product). If a limited-edition product is approved for return, a store credit will be issued for a replacement product.</p>
+              <p>We will physically inspect each return and we reserve the right to refuse an item if it does not pass inspection. In order for an exchange to pass inspection, the item that you are returning should be in new condition and inside the original packaging with all original tags attached. Exchanges should show no signs of wear, odors, stains (glitters, oils, etc) and no dampness from sweat or otherwise. If during inspection we find that the item is not in new condition (free of odors, stains, glitters, marks, etc) a credit or replacement will not be issued and you will be responsible for the cost of having the item shipped back to you. If the item is in new condition you will receive a store credit for your return once approved.</p>
+              <p>In order for your return to be processed, we ask that you follow the steps listed on our returns page closely. All returns will be processed as store credit for you to utilize to repurchase your sizing. To initiate the exchange, please send an email and send a copy of your order confirmation back with your exchange item details. Please note that you will be responsible for shipping charges.</p>
+              <p>If the proper order information is not provided, the return portal is not utilized, or proper return steps are not followed we will not be able to locate your return. We are not responsible for items shipped back without proper identification and we will not be able to issue you a refund if we cannot properly identify your return.</p>
+              <p>Once your item is received we have to inspect the item. Processing time for returns averages 4–7 business days. Once approved, we will send you a store credit for your item to the email address on file. Please follow the steps on the returns page closely to ensure we receive your return.</p>
+            </div>
+          </div>
 
           <div className="mb-8">
             <div className="flex items-center justify-between">
@@ -154,12 +161,14 @@ export default function ReturnsPortalPage() {
                 <div className="flex items-start space-x-3">
                   <i className="ri-information-line text-xl text-blue-700 mt-0.5"></i>
                   <div className="text-sm text-blue-700">
-                    <p className="font-semibold mb-1">Return Policy Highlights</p>
+                    <p className="font-semibold mb-1">BADDIECURVES Return Policy Highlights</p>
                     <ul className="space-y-1">
-                      <li>• Returns accepted within 30 days of delivery</li>
-                      <li>• Items must be unused with original tags</li>
-                      <li>• Free return shipping for defective items</li>
-                      <li>• Refunds processed within 5-7 business days</li>
+                      <li>• Returns accepted within the United States for eligible items in new condition with original packaging and tags.</li>
+                      <li>• Items must be in new condition — no wear, odors, stains, glitter, or dampness. Restocking fees may apply if not in original condition.</li>
+                      <li>• Returns are processed as <strong>store credit</strong>. Exchanges depend on options available on the return platform at the time you submit.</li>
+                      <li>• Customer is responsible for shipping fees to and from. Send all items in one package when returning multiple items.</li>
+                      <li>• We physically inspect each return; processing takes 4–7 business days after we receive the item.</li>
+                      <li>• Follow the steps on this returns page and include your order confirmation when initiating a return.</li>
                     </ul>
                   </div>
                 </div>
@@ -336,7 +345,5 @@ export default function ReturnsPortalPage() {
           )}
         </div>
       </main>
-      <Footer />
-    </>
   );
 }

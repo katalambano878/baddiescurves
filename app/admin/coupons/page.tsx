@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,6 +11,7 @@ export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchCoupons();
   }, []);

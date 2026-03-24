@@ -55,29 +55,37 @@ export default function CartSuggestions() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {suggestedProducts.map((product) => (
-          <div key={product.id} className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            <Link href={`/product/${product.id}`}>
-              <div className="aspect-square bg-gray-100 overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-              <div className="p-3">
-                <h4 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-2">{product.name}</h4>
-                <div className="flex items-center space-x-2 mb-2">
-                  <span className="text-lg font-bold text-blue-700">GH₵{product.price.toFixed(2)}</span>
-                  {product.originalPrice && (
-                    <span className="text-xs text-gray-400 line-through">GH₵{product.originalPrice.toFixed(2)}</span>
-                  )}
-                </div>
-                <button className="w-full py-2 bg-blue-700 text-white text-sm rounded-lg font-semibold hover:bg-blue-800 transition-colors whitespace-nowrap">
-                  <i className="ri-add-line mr-1"></i>
-                  Quick Add
+          <div key={product.id} className="group flex flex-col h-full bg-white rounded-[1.5rem] border border-black/[0.04] p-2.5 sm:p-3 hover:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.06)] hover:border-black/[0.08] transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]">
+            <Link href={`/product/${product.id}`} className="relative block aspect-[4/5] overflow-hidden rounded-[1rem] bg-[#FAFAFA] mb-5">
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-full object-cover object-top transition-transform duration-1000 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] group-hover:scale-[1.03]"
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hidden lg:flex z-20 bg-black/[0.02] backdrop-blur-[2px]">
+                <button className="bg-white/95 backdrop-blur-2xl text-gray-900 border border-white/40 hover:bg-gray-900 hover:text-white hover:border-gray-900 px-6 py-3.5 rounded-full text-[10px] uppercase tracking-[0.2em] font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 flex items-center justify-center space-x-2 translate-y-4 group-hover:translate-y-0">
+                  <span>Quick Add</span>
                 </button>
               </div>
             </Link>
+
+            <div className="flex flex-col flex-grow px-2 items-center text-center pb-2">
+              <Link href={`/product/${product.id}`}>
+                <h4 className="font-serif text-[15.5px] leading-[1.4] text-gray-900 mb-2 line-clamp-2 group-hover:text-black/60 transition-colors">{product.name}</h4>
+              </Link>
+              <div className="flex items-center justify-center space-x-2.5 mt-auto pt-2">
+                <span className="text-gray-900 font-medium text-[13.5px] tracking-wide">GH₵{product.price.toFixed(2)}</span>
+                {product.originalPrice && (
+                  <span className="text-[12px] text-gray-400 line-through decoration-gray-300/70">GH₵{product.originalPrice.toFixed(2)}</span>
+                )}
+              </div>
+
+              <div className="mt-4 w-full lg:hidden">
+                <button className="w-full bg-gray-50/50 border border-gray-200 text-gray-900 py-2.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-semibold hover:bg-gray-100 active:bg-gray-200 transition-colors flex items-center justify-center">
+                  <span>Quick Add</span>
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>

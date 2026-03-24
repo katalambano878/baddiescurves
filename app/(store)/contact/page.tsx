@@ -87,54 +87,21 @@ export default function ContactPage() {
     }
   };
 
-  // Get contact details from CMS settings
-  const contactEmail = getSetting('contact_email') || 'support@multimeysupplies.com';
-  const contactPhone = getSetting('contact_phone') || '+233209597443';
-  const contactAddress = getSetting('contact_address') || 'Accra, Ghana';
-
   const heroTitle = pageContent?.title || 'Get In Touch';
   const heroSubtitle = pageContent?.subtitle || 'Have a question or need assistance?';
-  const heroContent = pageContent?.content || 'Our friendly team is here to help. Reach out through any of our contact channels.';
-
-  const contactMethods = [
-    {
-      icon: 'ri-phone-line',
-      title: 'Call Us',
-      value: contactPhone,
-      link: `tel:${contactPhone.replace(/\s/g, '')}`,
-      description: 'Mon-Fri, 8am-6pm GMT'
-    },
-    {
-      icon: 'ri-mail-line',
-      title: 'Email Us',
-      value: contactEmail,
-      link: `mailto:${contactEmail}`,
-      description: 'We respond within 24 hours'
-    },
-    {
-      icon: 'ri-whatsapp-line',
-      title: 'WhatsApp',
-      value: contactPhone,
-      link: `https://wa.me/${contactPhone.replace(/[^0-9]/g, '')}`,
-      description: 'Chat with us instantly'
-    },
-    {
-      icon: 'ri-map-pin-line',
-      title: 'Visit Us',
-      value: contactAddress,
-      link: 'https://maps.google.com',
-      description: 'Mon-Sat, 9am-6pm'
-    }
-  ];
+  const heroContent = pageContent?.content || 'Send us a message and we\'ll get back to you.';
+  const contactPhone = getSetting('contact_phone') || '054 927 8135';
+  const contactAddress = getSetting('contact_address') || 'East Legon, Accra';
+  const siteName = getSetting('site_name') || "BADDIECURVES";
 
   const faqs = [
     {
       question: 'What are your delivery times?',
-      answer: 'Standard delivery takes 2-5 business days within Ghana. Express delivery is available for Accra and Kumasi. We ship dresses, electronics, bags, shoes and all other items with care.'
+      answer: 'Standard delivery typically takes 2–5 business days within Ghana, depending on your location. Every order is packaged with care to protect your hair products in transit.'
     },
     {
       question: 'Do you offer international shipping?',
-      answer: 'Currently, we ship within Ghana only. Many of our products are imported from China, so we handle all international logistics on our end. You simply order and receive.'
+      answer: 'At the moment, we focus on customers within Ghana. If we open up international shipping in the future, we will announce it on our social media channels.'
     },
     {
       question: 'What payment methods do you accept?',
@@ -146,41 +113,30 @@ export default function ContactPage() {
     <div className="min-h-screen bg-white">
       <PageHero
         title="Get In Touch"
-        subtitle="Have a question about our dresses, electronics, bags, or shoes? We're here to help from Accra, Ghana."
+        subtitle="Have a question? Send us a message."
+        backgroundImage="/page-hero-6.jpeg"
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          {contactMethods.map((method, index) => (
-            <a
-              key={index}
-              href={method.link}
-              target={method.link.startsWith('http') ? '_blank' : '_self'}
-              rel={method.link.startsWith('http') ? 'noopener noreferrer' : ''}
-              className="bg-white border border-gray-200 p-6 rounded-2xl hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer"
-            >
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <i className={`${method.icon} text-2xl text-blue-700`}></i>
-              </div>
-              <h3 className="font-bold text-gray-900 mb-2">{method.title}</h3>
-              <p className="text-blue-700 font-medium mb-1">{method.value}</p>
-              <p className="text-sm text-gray-500">{method.description}</p>
-            </a>
-          ))}
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 relative">
+        {/* Subtle page background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-50/40 rounded-full blur-[120px] pointer-events-none -z-10"></div>
 
+        <div className="grid lg:grid-cols-12 gap-16 lg:gap-24">
 
-        <div className="grid lg:grid-cols-2 gap-12">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Send Us a Message</h2>
-            <p className="text-gray-600 mb-8">
-              Fill out the form below and we'll get back to you as soon as possible.
-            </p>
+          {/* Left Column: Form */}
+          <div className="lg:col-span-7">
+            <div className="mb-10">
+              <h2 className="font-serif text-3xl sm:text-4xl text-gray-900 mb-4 tracking-tight drop-shadow-sm">Send Us a Message</h2>
+              <p className="text-gray-500 font-light text-lg tracking-wide">
+                Fill out the form below and we'll get back to you securely.
+              </p>
+            </div>
 
             <form id="contactForm" onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name *
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label htmlFor="name" className="block text-[13px] uppercase tracking-wider font-semibold text-gray-500">
+                    Full Name <span className="text-blue-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -189,14 +145,14 @@ export default function ContactPage() {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl focus:bg-white focus:shadow-[0_8px_30px_rgba(0,0,0,0.04)] focus:border-gray-300 focus:ring-0 transition-all duration-300 outline-none text-gray-800 placeholder:text-gray-400"
                   placeholder="John Doe"
                 />
               </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address *
+                <div className="space-y-2">
+                  <label htmlFor="email" className="block text-[13px] uppercase tracking-wider font-semibold text-gray-500">
+                    Email Address <span className="text-blue-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -205,13 +161,14 @@ export default function ContactPage() {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl focus:bg-white focus:shadow-[0_8px_30px_rgba(0,0,0,0.04)] focus:border-gray-300 focus:ring-0 transition-all duration-300 outline-none text-gray-800 placeholder:text-gray-400"
                   placeholder="john@example.com"
                 />
+                </div>
               </div>
 
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="space-y-2">
+                <label htmlFor="phone" className="block text-[13px] uppercase tracking-wider font-semibold text-gray-500">
                   Phone Number
                 </label>
                 <input
@@ -220,14 +177,14 @@ export default function ContactPage() {
                   name="phone"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl focus:bg-white focus:shadow-[0_8px_30px_rgba(0,0,0,0.04)] focus:border-gray-300 focus:ring-0 transition-all duration-300 outline-none text-gray-800 placeholder:text-gray-400"
                   placeholder="+233 XX XXX XXXX"
                 />
               </div>
 
-              <div>
-                <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-                  Subject *
+              <div className="space-y-2">
+                <label htmlFor="subject" className="block text-[13px] uppercase tracking-wider font-semibold text-gray-500">
+                  Subject <span className="text-blue-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -236,111 +193,122 @@ export default function ContactPage() {
                   required
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl focus:bg-white focus:shadow-[0_8px_30px_rgba(0,0,0,0.04)] focus:border-gray-300 focus:ring-0 transition-all duration-300 outline-none text-gray-800 placeholder:text-gray-400"
                   placeholder="Order inquiry, product question, etc."
                 />
               </div>
 
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                  Message *
+              <div className="space-y-2">
+                <div className="flex justify-between items-end">
+                  <label htmlFor="message" className="block text-[13px] uppercase tracking-wider font-semibold text-gray-500">
+                    Message <span className="text-blue-500">*</span>
                 </label>
+                  <span className="text-[11px] text-gray-400 font-medium">{formData.message.length}/500</span>
+                </div>
                 <textarea
                   id="message"
                   name="message"
                   required
-                  rows={6}
+                  rows={5}
                   maxLength={500}
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+                  className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl focus:bg-white focus:shadow-[0_8px_30px_rgba(0,0,0,0.04)] focus:border-gray-300 focus:ring-0 transition-all duration-300 outline-none resize-none text-gray-800 placeholder:text-gray-400"
                   placeholder="Tell us how we can help you..."
                 ></textarea>
-                <p className="text-xs text-gray-500 mt-1">{formData.message.length}/500 characters</p>
               </div>
 
               {submitStatus === 'success' && (
-                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl">
-                  <i className="ri-check-line mr-2"></i>
-                  Message sent successfully! We'll respond within 24 hours.
+                <div className="bg-green-50/50 backdrop-blur-md border border-green-100 text-green-700 px-6 py-4 rounded-2xl flex items-center shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center mr-3 shrink-0">
+                    <i className="ri-check-line"></i>
+                  </div>
+                  <span className="text-sm font-medium">Message sent successfully! We'll respond within 24 hours.</span>
                 </div>
               )}
 
               {submitStatus === 'error' && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
-                  <i className="ri-error-warning-line mr-2"></i>
-                  Failed to send message. Please try again or contact us directly.
+                <div className="bg-red-50/50 backdrop-blur-md border border-red-100 text-red-700 px-6 py-4 rounded-2xl flex items-center shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-3 shrink-0">
+                    <i className="ri-error-warning-line"></i>
+                  </div>
+                  <span className="text-sm font-medium">Failed to send message. Please try again.</span>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={isSubmitting || verifying}
-                className="w-full bg-blue-700 text-white py-4 rounded-xl font-medium hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer"
+                className="group relative w-full sm:w-auto inline-flex items-center justify-center px-10 py-4 bg-gray-900 text-white rounded-full font-medium overflow-hidden transition-all duration-300 hover:shadow-[0_8px_25px_rgba(17,24,39,0.3)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                <span className="relative flex items-center gap-2">
                 {isSubmitting || verifying ? (verifying ? 'Verifying...' : 'Sending...') : 'Send Message'}
+                  {!(isSubmitting || verifying) && <i className="ri-send-plane-fill transition-transform group-hover:translate-x-1 group-hover:-translate-y-1"></i>}
+                </span>
               </button>
             </form>
           </div>
 
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Quick Answers</h2>
-            <p className="text-gray-600 mb-8">
-              Find answers to common questions before reaching out
-            </p>
+          {/* Right Column: Quick Info */}
+          <div className="lg:col-span-5 lg:pl-8 flex flex-col pt-4 lg:pt-0">
+            <div className="mb-10">
+              <h2 className="font-serif text-3xl sm:text-4xl text-gray-900 mb-4 tracking-tight drop-shadow-sm">Quick Answers</h2>
+              <p className="text-gray-500 font-light text-lg tracking-wide">
+                Find answers before reaching out.
+              </p>
+            </div>
 
-            <div className="space-y-4 mb-12">
+            {(contactPhone || contactAddress) && (
+              <div className="relative group overflow-hidden bg-white border border-gray-100 rounded-3xl p-8 sm:p-10 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.05)] transition-all duration-500 mb-12">
+                {/* Ethereal Glow */}
+                <div className="absolute top-0 right-0 w-48 h-48 bg-blue-50 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
+
+                <h3 className="font-serif text-xl font-bold text-gray-900 mb-6 tracking-wide relative z-10">{siteName}</h3>
+                <div className="space-y-5 relative z-10">
+                  {contactAddress && (
+                    <div className="flex items-start gap-4 text-gray-600">
+                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 group-hover:bg-white transition-colors duration-500">
+                        <i className="ri-map-pin-line text-lg text-gray-400"></i>
+                      </div>
+                      <p className="pt-2 font-light leading-relaxed">{contactAddress}</p>
+                    </div>
+                  )}
+                  {contactPhone && (
+                    <div className="flex items-start gap-4 text-gray-600">
+                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 group-hover:bg-white transition-colors duration-500">
+                        <i className="ri-phone-line text-lg text-gray-400"></i>
+                      </div>
+                      <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <a href={`tel:${contactPhone.replace(/\s/g, '')}`} className="font-light hover:text-black transition-colors">{contactPhone}</a>
+                        <a href={`https://wa.me/233${contactPhone.replace(/\D/g, '').replace(/^0/, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
+                          <i className="ri-whatsapp-fill mr-1.5 text-sm"></i> WhatsApp Us
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
               {faqs.map((faq, index) => (
-                <details key={index} className="bg-gray-50 rounded-xl overflow-hidden">
-                  <summary className="px-6 py-4 font-medium text-gray-900 cursor-pointer hover:bg-gray-100 transition-colors">
+                <details key={index} className="group bg-white border border-gray-100 rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden transition-all duration-300 hover:border-gray-200 hover:shadow-sm">
+                  <summary className="px-6 py-5 font-medium text-gray-800 cursor-pointer flex justify-between items-center select-none text-[15px]">
                     {faq.question}
+                    <span className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center ml-4 shrink-0 transition-transform duration-300 group-open:rotate-180 group-hover:bg-gray-100">
+                      <i className="ri-arrow-down-s-line text-gray-400"></i>
+                    </span>
                   </summary>
-                  <div className="px-6 pb-4 text-gray-600 leading-relaxed">
+                  <div className="px-6 pb-6 pt-1 text-gray-500 text-[15px] font-light leading-relaxed border-t border-transparent group-open:border-gray-50 transition-colors duration-300">
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300 ease-out">
                     {faq.answer}
+                    </div>
                   </div>
                 </details>
               ))}
             </div>
 
-            <div className="bg-gradient-to-br from-blue-700 to-blue-900 p-8 rounded-2xl text-white">
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-4">
-                <i className="ri-customer-service-2-line text-2xl"></i>
-              </div>
-              <h3 className="text-2xl font-bold mb-3">Need Immediate Help?</h3>
-              <p className="text-blue-100 mb-6 leading-relaxed">
-                Our customer support team is available Monday to Friday, 8am-6pm GMT. For urgent matters, reach out via WhatsApp.
-              </p>
-              <a
-                href={`https://wa.me/${contactPhone.replace(/[^0-9]/g, '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-white text-blue-700 px-6 py-3 rounded-full font-medium hover:bg-blue-50 transition-colors whitespace-nowrap"
-              >
-                <i className="ri-whatsapp-line text-xl"></i>
-                Chat on WhatsApp
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-gray-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">Visit Our Store</h2>
-            <p className="text-gray-600 mb-6 leading-relaxed">
-              Prefer to shop in person? Visit our store. Our knowledgeable staff will be happy to assist you with product selection and answer any questions.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4 text-gray-600">
-              <div className="flex items-center gap-2">
-                <i className="ri-map-pin-2-line text-blue-700"></i>
-                <span>{contactAddress}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <i className="ri-time-line text-blue-700"></i>
-                <span>Mon-Sat: 9am-6pm</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>

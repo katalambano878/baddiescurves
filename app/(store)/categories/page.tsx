@@ -44,7 +44,8 @@ export default async function CategoriesPage() {
     <div className="min-h-screen bg-white">
       <PageHero
         title="Shop by Category"
-        subtitle="Browse dresses, electronics, bags, shoes and everything in between"
+        subtitle="Browse our collections of hair essentials, luxury lashes, and everyday beauty must-haves"
+        backgroundImage="/page-hero-categories-alt.jpeg"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -54,32 +55,48 @@ export default async function CategoriesPage() {
               <Link
                 key={category.id}
                 href={`/shop?category=${category.slug}`}
-                className="group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-2xl transition-all cursor-pointer"
+                className="group relative bg-white p-2.5 sm:p-3 rounded-[2rem] sm:rounded-[2.5rem] flex flex-col border border-gray-100/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] transition-all duration-1000 hover:-translate-y-1 cursor-pointer"
               >
-                <div className="relative h-48 overflow-hidden">
+                {/* Image Section */}
+                <div className="relative h-64 sm:h-72 w-full overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] bg-gray-50">
                   <img
                     src={category.image}
                     alt={category.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-cover transition-transform duration-1000 ease-[0.25,0.46,0.45,0.94] group-hover:scale-105"
                   />
-                  <div className={`absolute inset-0 bg-gradient-to-t ${category.color} opacity-0 group-hover:opacity-20 transition-opacity`}></div>
-                </div>
-                <div className="p-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-12 h-12 bg-gradient-to-br ${category.color} rounded-full flex items-center justify-center`}>
-                      <i className={`${category.icon} text-2xl text-white`}></i>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">{category.name}</h3>
-                      <p className="text-sm text-gray-500">Collection</p>
+                  {/* Subtle ethereal overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 via-gray-900/10 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-700"></div>
+
+                  {/* Floating Elements on Image */}
+                  <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between z-10">
+                    <div className="flex gap-4 items-center">
+                      <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-700">
+                        <i className={`${category.icon} text-2xl text-white`}></i>
+                      </div>
+                      <span className="px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white/90 text-[11px] font-bold tracking-[0.2em] uppercase shadow-sm">
+                        Collection
+                      </span>
                     </div>
                   </div>
-                  <p className="text-gray-600 leading-relaxed text-sm mb-4 line-clamp-2">
+                </div>
+
+                {/* Content Section */}
+                <div className="px-5 py-6 sm:px-6 flex flex-col flex-1 relative z-20">
+                  <h3 className="text-xl sm:text-2xl font-black text-gray-900 mb-3 tracking-tight group-hover:text-blue-900 transition-colors duration-500">
+                    {category.name}
+                  </h3>
+                  <p className="text-gray-500 font-light leading-relaxed text-[15px] mb-8 line-clamp-2">
                     {category.description || 'Explore our exclusive collection in this category.'}
                   </p>
-                  <div className="flex items-center text-blue-700 font-medium text-sm group-hover:gap-2 transition-all">
-                    <span>Browse Collection</span>
-                    <i className="ri-arrow-right-line ml-2"></i>
+
+                  {/* Bottom Action Area */}
+                  <div className="mt-auto pt-5 border-t border-gray-100/60 flex items-center justify-between">
+                    <span className="text-gray-900 font-semibold text-sm tracking-wide group-hover:text-blue-700 transition-colors duration-500">
+                      Explore Collection
+                    </span>
+                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-50 group-hover:shadow-md transition-all duration-500 -rotate-45 group-hover:rotate-0">
+                      <i className="ri-arrow-right-line text-lg text-gray-400 group-hover:text-blue-600 transition-colors duration-500"></i>
+                    </div>
                   </div>
                 </div>
               </Link>
@@ -93,27 +110,42 @@ export default async function CategoriesPage() {
         )}
       </div>
 
-      <div className="bg-gradient-to-br from-blue-700 to-blue-900 py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold text-white mb-4">Can't Find What You're Looking For?</h2>
-          <p className="text-xl text-blue-100 mb-8 leading-relaxed">
-            Try our advanced search or contact our team for personalised product recommendations
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Link
-              href="/shop"
-              className="inline-flex items-center gap-2 bg-white text-blue-700 px-8 py-4 rounded-full font-medium hover:bg-blue-50 transition-colors whitespace-nowrap"
-            >
-              <i className="ri-search-line"></i>
-              Search All Products
-            </Link>
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-full font-medium hover:bg-blue-500 transition-colors whitespace-nowrap"
-            >
-              <i className="ri-customer-service-line"></i>
-              Contact Support
-            </Link>
+      {/* Premium CTA Section */}
+      <div className="bg-white py-20 px-4 sm:px-6 lg:px-8 flex justify-center border-t border-gray-50">
+        <div className="relative w-full max-w-5xl rounded-[3rem] overflow-hidden bg-gray-900 border border-gray-800 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] group">
+          {/* Subtle elegant glow effects */}
+          <div className="absolute top-0 right-0 -m-32 w-96 h-96 bg-blue-600/20 rounded-full blur-[100px] pointer-events-none group-hover:bg-blue-500/30 transition-colors duration-1000"></div>
+          <div className="absolute bottom-0 left-0 -m-32 w-80 h-80 bg-indigo-600/10 rounded-full blur-[80px] pointer-events-none group-hover:bg-indigo-500/20 transition-colors duration-1000"></div>
+
+          {/* Glass Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-50 pointer-events-none"></div>
+
+          <div className="relative z-10 px-6 py-16 sm:p-20 text-center flex flex-col items-center">
+            <div className="w-16 h-16 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl flex items-center justify-center mb-8 shadow-xl">
+              <i className="ri-search-eye-line text-3xl text-blue-300"></i>
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-6 text-white tracking-tight">
+              Can't Find What You're <span className="text-transparent bg-clip-text bg-gradient-to-br from-blue-300 via-white to-blue-200">Looking For?</span>
+            </h2>
+            <p className="text-lg text-gray-400 mb-10 leading-relaxed max-w-2xl font-light">
+              Try our advanced search or contact our dedicated team for personalised product recommendations tailored to your style.
+            </p>
+            <div className="flex flex-wrap gap-4 justify-center">
+              <Link
+                href="/shop"
+                className="group/btn relative inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-white text-gray-900 font-bold text-sm sm:text-base transition-all duration-500 hover:scale-105 shadow-[0_0_0_4px_rgba(255,255,255,0.05)] hover:shadow-[0_0_0_8px_rgba(255,255,255,0.1)]"
+              >
+                <i className="ri-search-line text-blue-600"></i>
+                <span>Search All Products</span>
+              </Link>
+              <Link
+                href="/contact"
+                className="group/btn2 relative inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white font-medium text-sm sm:text-base transition-all duration-500 hover:bg-white/20 hover:scale-105 backdrop-blur-md"
+              >
+                <i className="ri-customer-service-2-line text-blue-300"></i>
+                <span>Contact Support</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

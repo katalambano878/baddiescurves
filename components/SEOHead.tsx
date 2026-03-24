@@ -16,10 +16,10 @@ interface SEOProps {
 }
 
 export function generateMetadata({
-  title = 'Premium Online Shopping in Ghana',
-  description = 'Shop dresses, electronics, bags, shoes and more at MultiMey Supplies. Locally sourced and imported quality products delivered across Ghana.',
+  title = "BADDIECURVES – Waist trainers, shapewear & athleisure",
+  description = 'Waist trainers, shapewear, post-op & activewear. Fashionable, confident style for every curve. Shop durable quality athleisure at Baddiescurves.',
   keywords = [],
-  ogImage = 'https://readdy.ai/api/search-image?query=modern%20premium%20ecommerce%20online%20shopping%20platform%20elegant%20design&width=1200&height=630&seq=ogimage&orientation=landscape',
+  ogImage,
   ogType = 'website',
   price,
   currency = 'GHS',
@@ -29,17 +29,19 @@ export function generateMetadata({
   author,
   noindex = false
 }: SEOProps): Metadata {
-  const siteName = 'PremiumShop Ghana';
-  const siteUrl = 'https://premiumshop.com';
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://example.com';
+  const defaultOgImage = `${siteUrl}/OG.jpg`;
+  const resolvedOgImage = ogImage || defaultOgImage;
+  const siteName = "BADDIECURVES";
   const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
 
   const defaultKeywords = [
-    'online shopping ghana',
-    'premium products ghana',
-    'buy online ghana',
-    'ecommerce ghana',
-    'fast delivery ghana',
-    'secure shopping'
+    'Baddiescurves',
+    'waist trainers',
+    'shapewear',
+    'post op',
+    'activewear',
+    'athleisure'
   ];
 
   const allKeywords = [...new Set([...keywords, ...defaultKeywords])];
@@ -52,7 +54,7 @@ export function generateMetadata({
     openGraph: {
       title: fullTitle,
       description,
-      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
+      images: [{ url: resolvedOgImage, width: 1200, height: 630, alt: title }],
       type: ogType as any,
       siteName,
       locale: 'en_GH'
@@ -61,7 +63,7 @@ export function generateMetadata({
       card: 'summary_large_image',
       title: fullTitle,
       description,
-      images: [ogImage]
+      images: [resolvedOgImage]
     },
     robots: noindex ? {
       index: false,
@@ -114,7 +116,7 @@ export function generateProductSchema(product: {
     sku: product.sku,
     brand: {
       '@type': 'Brand',
-      name: product.brand || 'PremiumShop'
+      name: product.brand || "BADDIECURVES"
     },
     offers: {
       '@type': 'Offer',
@@ -159,38 +161,31 @@ export function generateBreadcrumbSchema(items: { name: string; url: string }[])
 }
 
 export function generateOrganizationSchema() {
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://example.com';
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'PremiumShop Ghana',
-    url: 'https://premiumshop.com',
-    logo: 'https://readdy.ai/api/search-image?query=premium%20shop%20logo%20elegant%20modern&width=200&height=200&seq=logo&orientation=squarish',
-    contactPoint: {
-      '@type': 'ContactPoint',
-      telephone: '+233-XX-XXX-XXXX',
-      contactType: 'Customer Service',
-      areaServed: 'GH',
-      availableLanguage: ['English']
-    },
+    name: "BADDIECURVES",
+    url: siteUrl,
     sameAs: [
-      'https://facebook.com/premiumshop',
-      'https://instagram.com/premiumshop',
-      'https://twitter.com/premiumshop'
+      'https://www.instagram.com/Baddiecurves',
+      'https://www.tiktok.com/@Baddiecurves1'
     ]
   };
 }
 
 export function generateWebsiteSchema() {
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://example.com';
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'PremiumShop Ghana',
-    url: 'https://premiumshop.com',
+    name: "BADDIECURVES",
+    url: siteUrl,
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: 'https://premiumshop.com/shop?search={search_term_string}'
+        urlTemplate: `${siteUrl}/shop?search={search_term_string}`
       },
       'query-input': 'required name=search_term_string'
     }

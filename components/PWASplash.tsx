@@ -28,14 +28,10 @@ export default function PWASplash() {
   return (
     <div className="pwa-splash" aria-hidden="true">
       <div className="pwa-splash-logo mb-6">
-        <img
-          src="/logo.png"
-          alt="MultiMey Supplies"
-          className="w-24 h-24 object-contain brightness-0 invert"
-        />
+        <span className="text-5xl font-serif font-bold text-white">BC</span>
       </div>
-      <h1 className="text-white text-xl font-bold font-serif mb-2">MultiMey Supplies</h1>
-      <p className="text-blue-200 text-sm font-medium mb-8">Dresses, Electronics, Bags & More</p>
+      <h1 className="text-white text-xl font-bold font-serif mb-2">BADDIECURVES</h1>
+      <p className="text-blue-200 text-sm font-medium mb-8">Waist trainers, shapewear & athleisure for every curve</p>
       <div className="pwa-splash-dots flex gap-1.5">
         <span className="w-2 h-2 bg-white rounded-full" />
         <span className="w-2 h-2 bg-white rounded-full" />

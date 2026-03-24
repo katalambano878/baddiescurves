@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-white">
@@ -6,9 +8,9 @@ export default function PrivacyPage() {
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl font-bold text-gray-900 mb-6">Privacy Policy</h1>
             <p className="text-xl text-gray-600 leading-relaxed">
-              Your privacy matters to us. Learn how we collect, use, and protect your personal information.
+              Because We Care — how your personal information is collected, used, and shared when you visit or make a purchase from BADDIECURVES.
             </p>
-            <p className="text-sm text-gray-500 mt-4">Last updated: February 2026</p>
+            <p className="text-sm text-gray-500 mt-4">Last updated: March 2026</p>
           </div>
         </div>
       </div>
@@ -16,395 +18,123 @@ export default function PrivacyPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="prose prose-lg max-w-none">
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">1. Information We Collect</h2>
-            
-            <h3 className="text-xl font-bold text-gray-900 mb-4 mt-8">1.1 Information You Provide</h3>
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">Personal Information We Collect</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              When you create an account, place an order, or contact us, we collect:
+              When you visit the BADDIECURVES ONLINE STORE, we automatically collect certain information about your device, including information about your web browser, IP address, time zone, and some of the cookies that are installed on your device. Additionally, as you browse the Site, we collect information about the individual web pages or products that you view, what websites or search terms referred you to the Site, and information about how you interact with the Site. We refer to this automatically-collected information as &quot;Device Information&quot;.
             </p>
+
+            <h3 className="text-xl font-bold text-gray-900 mb-4 mt-8">We Collect Device Information Using The Following Technologies:</h3>
             <ul className="space-y-2 text-gray-600 mb-6">
               <li className="flex items-start gap-2">
                 <i className="ri-checkbox-circle-line text-blue-700 mt-1"></i>
-                <span><strong>Personal Details:</strong> Name, email address, phone number, date of birth</span>
+                <span><strong>Cookies</strong> — Data files placed on your device or computer that often include an anonymous unique identifier. For more information about cookies, and how to disable cookies, visit <a href="http://www.allaboutcookies.org" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">http://www.allaboutcookies.org</a>.</span>
               </li>
               <li className="flex items-start gap-2">
                 <i className="ri-checkbox-circle-line text-blue-700 mt-1"></i>
-                <span><strong>Delivery Information:</strong> Shipping and billing addresses</span>
+                <span><strong>Log files</strong> — Track actions occurring on the Site, and collect data including your IP address, browser type, Internet service provider, referring/exit pages, and date/time stamps.</span>
               </li>
               <li className="flex items-start gap-2">
                 <i className="ri-checkbox-circle-line text-blue-700 mt-1"></i>
-                <span><strong>Payment Details:</strong> Payment method information (securely processed by third-party providers)</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <i className="ri-checkbox-circle-line text-blue-700 mt-1"></i>
-                <span><strong>Communications:</strong> Messages, reviews, and feedback you submit</span>
+                <span><strong>Web beacons</strong>, <strong>tags</strong>, and <strong>pixels</strong> — Electronic files used to record information about how you browse the Site.</span>
               </li>
             </ul>
 
-            <h3 className="text-xl font-bold text-gray-900 mb-4 mt-8">1.2 Information Collected Automatically</h3>
             <p className="text-gray-600 leading-relaxed mb-4">
-              When you visit our website, we automatically collect:
+              Additionally when you make a purchase or attempt to make a purchase through the Site, we collect certain information from you, including your name, billing address, shipping address, payment information (including credit card numbers &amp; PayPal), email address, and phone number. We refer to this information as &quot;Order Information&quot;.
+            </p>
+            <p className="text-gray-600 leading-relaxed">
+              When we talk about &quot;Personal Information&quot; in this Privacy Policy, we are talking both about Device Information and Order Information.
+            </p>
+          </section>
+
+          <section className="mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">How Do We Use Your Personal Information?</h2>
+            <p className="text-gray-600 leading-relaxed mb-4">
+              We use the Order Information that we collect generally to fulfill any orders placed through the Site (including processing your payment information, arranging for shipping, and providing you with invoices and/or order confirmations). Additionally, we use this Order Information to:
             </p>
             <ul className="space-y-2 text-gray-600 mb-6">
               <li className="flex items-start gap-2">
-                <i className="ri-checkbox-circle-line text-blue-700 mt-1"></i>
-                <span><strong>Device Information:</strong> IP address, browser type, operating system, device identifiers</span>
+                <i className="ri-arrow-right-s-line text-blue-700 mt-1"></i>
+                <span>Communicate with you;</span>
               </li>
               <li className="flex items-start gap-2">
-                <i className="ri-checkbox-circle-line text-blue-700 mt-1"></i>
-                <span><strong>Usage Data:</strong> Pages viewed, products browsed, search queries, time spent on site</span>
+                <i className="ri-arrow-right-s-line text-blue-700 mt-1"></i>
+                <span>Screen our orders for potential risk or fraud; and</span>
               </li>
               <li className="flex items-start gap-2">
-                <i className="ri-checkbox-circle-line text-blue-700 mt-1"></i>
-                <span><strong>Cookies:</strong> Small data files stored on your device to improve your experience</span>
+                <i className="ri-arrow-right-s-line text-blue-700 mt-1"></i>
+                <span>When in line with the preferences you have shared with us, provide you with information or advertising relating to our products or services.</span>
               </li>
             </ul>
-          </section>
-
-          <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">2. How We Use Your Information</h2>
-            <p className="text-gray-600 leading-relaxed mb-6">
-              We use your personal information for the following purposes:
-            </p>
-            
-            <div className="space-y-6">
-              <div className="bg-gray-50 p-6 rounded-xl">
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <i className="ri-shopping-bag-line text-blue-700"></i>
-                  Order Processing & Fulfilment
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Process your orders, arrange delivery, send order confirmations and updates, handle returns and refunds, and provide customer support.
-                </p>
-              </div>
-
-              <div className="bg-gray-50 p-6 rounded-xl">
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <i className="ri-line-chart-line text-blue-700"></i>
-                  Service Improvement
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Analyse website usage to improve our products, services, and user experience. Conduct research and development for new features and offerings.
-                </p>
-              </div>
-
-              <div className="bg-gray-50 p-6 rounded-xl">
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <i className="ri-mail-line text-blue-700"></i>
-                  Marketing & Communication
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Send promotional emails, special offers, and product recommendations (only if you've opted in). Share relevant updates about your orders and our services.
-                </p>
-              </div>
-
-              <div className="bg-gray-50 p-6 rounded-xl">
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <i className="ri-shield-check-line text-blue-700"></i>
-                  Security & Fraud Prevention
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Protect against fraudulent transactions, unauthorised access, and other security threats. Verify your identity for high-value purchases.
-                </p>
-              </div>
-
-              <div className="bg-gray-50 p-6 rounded-xl">
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <i className="ri-scales-line text-blue-700"></i>
-                  Legal Compliance
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Comply with legal obligations, respond to lawful requests from authorities, enforce our terms and conditions, and resolve disputes.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">3. Information Sharing & Disclosure</h2>
-            <p className="text-gray-600 leading-relaxed mb-6">
-              We do not sell your personal information. We may share your data with:
-            </p>
-
-            <div className="space-y-4">
-              <div className="border-l-4 border-blue-700 pl-6">
-                <h3 className="font-bold text-gray-900 mb-2">Service Providers</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Trusted third parties who help us operate our business (payment processors, delivery partners, email service providers, analytics tools). They are contractually bound to protect your data.
-                </p>
-              </div>
-
-              <div className="border-l-4 border-blue-700 pl-6">
-                <h3 className="font-bold text-gray-900 mb-2">Business Transfers</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  If we merge with or are acquired by another company, your information may be transferred as part of the transaction. We will notify you of any such change.
-                </p>
-              </div>
-
-              <div className="border-l-4 border-blue-700 pl-6">
-                <h3 className="font-bold text-gray-900 mb-2">Legal Requirements</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  When required by law or to protect our rights, property, or safety, or that of our customers or others.
-                </p>
-              </div>
-
-              <div className="border-l-4 border-blue-700 pl-6">
-                <h3 className="font-bold text-gray-900 mb-2">With Your Consent</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Any other disclosures will be made only with your explicit consent.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">4. Data Security</h2>
-            <p className="text-gray-600 leading-relaxed mb-6">
-              We implement robust security measures to protect your personal information:
-            </p>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl">
-                <div className="w-10 h-10 bg-blue-700 rounded-full flex items-center justify-center mb-4">
-                  <i className="ri-lock-line text-white text-lg"></i>
-                </div>
-                <h3 className="font-bold text-gray-900 mb-2">Encryption</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  All data transmitted between your browser and our servers is encrypted using SSL/TLS technology.
-                </p>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl">
-                <div className="w-10 h-10 bg-blue-700 rounded-full flex items-center justify-center mb-4">
-                  <i className="ri-shield-check-line text-white text-lg"></i>
-                </div>
-                <h3 className="font-bold text-gray-900 mb-2">Secure Storage</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Your data is stored on secure servers with restricted access and regular security audits.
-                </p>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl">
-                <div className="w-10 h-10 bg-blue-700 rounded-full flex items-center justify-center mb-4">
-                  <i className="ri-bank-card-line text-white text-lg"></i>
-                </div>
-                <h3 className="font-bold text-gray-900 mb-2">Payment Security</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  We never store your full payment card details. All payments are processed by PCI-DSS compliant providers.
-                </p>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl">
-                <div className="w-10 h-10 bg-blue-700 rounded-full flex items-center justify-center mb-4">
-                  <i className="ri-user-lock-line text-white text-lg"></i>
-                </div>
-                <h3 className="font-bold text-gray-900 mb-2">Access Controls</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Only authorised personnel have access to personal data, and they are bound by strict confidentiality obligations.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 p-6 rounded-xl mt-6">
-              <p className="text-sm text-gray-600 leading-relaxed">
-                <strong className="text-gray-900">Important:</strong> While we implement strong security measures, no method of transmission or storage is 100% secure. We cannot guarantee absolute security but continually work to protect your information.
-              </p>
-            </div>
-          </section>
-
-          <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">5. Your Rights & Choices</h2>
-            <p className="text-gray-600 leading-relaxed mb-6">
-              You have the following rights regarding your personal information:
-            </p>
-
-            <div className="space-y-4 mb-6">
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <i className="ri-eye-line text-blue-700"></i>
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 mb-1">Access</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">Request a copy of the personal information we hold about you.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <i className="ri-pencil-line text-blue-700"></i>
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 mb-1">Correction</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">Update or correct inaccurate or incomplete information.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <i className="ri-delete-bin-line text-blue-700"></i>
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 mb-1">Deletion</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">Request deletion of your personal information (subject to legal retention requirements).</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <i className="ri-mail-close-line text-blue-700"></i>
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 mb-1">Marketing Opt-Out</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">Unsubscribe from marketing emails at any time using the link in our emails or your account settings.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <i className="ri-download-line text-blue-700"></i>
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 mb-1">Data Portability</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">Receive your data in a structured, commonly used format.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <i className="ri-hand-coin-line text-blue-700"></i>
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 mb-1">Object to Processing</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">Object to certain types of data processing, such as direct marketing.</p>
-                </div>
-              </div>
-            </div>
-
             <p className="text-gray-600 leading-relaxed">
-              To exercise any of these rights, please contact us at <a href="mailto:support@multimeysupplies.com" className="text-blue-700 font-medium hover:underline">support@multimeysupplies.com</a> or through your account settings. We will respond within 30 days.
+              We use the Device Information that we collect to help us screen for potential risk and fraud (in particular, your IP address), and more generally to improve and optimize our Site (for example, by generating analytics about how our customers browse and interact with the Site, and to assess the success of our marketing and advertising campaigns).
             </p>
           </section>
 
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">6. Cookies & Tracking</h2>
-            <p className="text-gray-600 leading-relaxed mb-6">
-              We use cookies and similar technologies to enhance your browsing experience:
-            </p>
-
-            <div className="space-y-4">
-              <div className="bg-white border border-gray-200 p-6 rounded-xl">
-                <h3 className="font-bold text-gray-900 mb-2">Essential Cookies</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Required for the website to function properly (e.g., shopping cart, login sessions). These cannot be disabled.
-                </p>
-              </div>
-
-              <div className="bg-white border border-gray-200 p-6 rounded-xl">
-                <h3 className="font-bold text-gray-900 mb-2">Analytics Cookies</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Help us understand how visitors use our website so we can improve it. These collect anonymous usage data.
-                </p>
-              </div>
-
-              <div className="bg-white border border-gray-200 p-6 rounded-xl">
-                <h3 className="font-bold text-gray-900 mb-2">Marketing Cookies</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Used to show you relevant advertisements based on your interests. You can opt out of these through your browser settings.
-                </p>
-              </div>
-
-              <div className="bg-white border border-gray-200 p-6 rounded-xl">
-                <h3 className="font-bold text-gray-900 mb-2">Preference Cookies</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Remember your preferences and settings (e.g., language, region) to provide a personalised experience.
-                </p>
-              </div>
-            </div>
-
-            <p className="text-gray-600 leading-relaxed mt-6">
-              You can control cookie preferences through your browser settings. However, disabling certain cookies may affect website functionality.
-            </p>
-          </section>
-
-          <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">7. Children's Privacy</h2>
-            <p className="text-gray-600 leading-relaxed">
-              Our website is not intended for children under 16 years of age. We do not knowingly collect personal information from children. If you believe we have inadvertently collected information from a child, please contact us immediately and we will delete it.
-            </p>
-          </section>
-
-          <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">8. International Data Transfers</h2>
-            <p className="text-gray-600 leading-relaxed">
-              Your information may be transferred to and processed in countries outside Ghana, including countries that may have different data protection laws. We ensure appropriate safeguards are in place to protect your information in accordance with this privacy policy.
-            </p>
-          </section>
-
-          <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">9. Data Retention</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">Sharing Your Personal Information</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              We retain your personal information only for as long as necessary to fulfil the purposes outlined in this policy:
+              We share your Personal Information with third parties to help us use your Personal Information, as described above. For example, we use Shopify to power our online store — you can read more about how Shopify uses your Personal Information here: <a href="https://www.shopify.com/legal/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">https://www.shopify.com/legal/privacy</a>. We also use Google Analytics to help us understand how our customers use the Site — you can read more about how Google uses your Personal Information here: <a href="https://www.google.com/intl/en/policies/privacy/" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">https://www.google.com/intl/en/policies/privacy/</a>. You can also opt-out of Google Analytics here: <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">https://tools.google.com/dlpage/gaoptout</a>.
+            </p>
+            <p className="text-gray-600 leading-relaxed">
+              Finally, we may also share your Personal Information to comply with applicable laws and regulations, to respond to a subpoena, search warrant or other lawful request for information we receive, or to otherwise protect our rights.
+            </p>
+          </section>
+
+          <section className="mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">Behavioral Advertising</h2>
+            <p className="text-gray-600 leading-relaxed mb-4">
+              As described above, we use your Personal Information to provide you with targeted advertisements or marketing communications we believe may be of interest to you. For more information about how targeted advertising works, you can visit the Network Advertising Initiative&apos;s (&quot;NAI&quot;) educational page at <a href="http://www.networkadvertising.org/understanding-online-advertising/how-does-it-work" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">http://www.networkadvertising.org/understanding-online-advertising/how-does-it-work</a>.
+            </p>
+            <p className="text-gray-600 leading-relaxed mb-4">
+              You can opt out of targeted advertising by using the links below:
             </p>
             <ul className="space-y-2 text-gray-600">
-              <li className="flex items-start gap-2">
-                <i className="ri-arrow-right-s-line text-blue-700 mt-1"></i>
-                <span><strong>Account Information:</strong> Until you request deletion or close your account</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <i className="ri-arrow-right-s-line text-blue-700 mt-1"></i>
-                <span><strong>Order History:</strong> 7 years for tax and accounting purposes</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <i className="ri-arrow-right-s-line text-blue-700 mt-1"></i>
-                <span><strong>Marketing Data:</strong> Until you unsubscribe or request deletion</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <i className="ri-arrow-right-s-line text-blue-700 mt-1"></i>
-                <span><strong>Analytics Data:</strong> Typically 26 months</span>
-              </li>
+              <li><a href="https://www.facebook.com/settings/?tab=ads" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">Facebook</a></li>
+              <li><a href="https://www.google.com/settings/ads/anonymous" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">Google</a></li>
+              <li><a href="https://advertise.bingads.microsoft.com/en-us/resources/policies/personalized-ads" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">Bing</a></li>
             </ul>
           </section>
 
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">10. Changes to This Policy</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">Do Not Track</h2>
             <p className="text-gray-600 leading-relaxed">
-              We may update this privacy policy from time to time to reflect changes in our practices or for legal, operational, or regulatory reasons. We will notify you of significant changes by email or through a prominent notice on our website. The "Last updated" date at the top indicates when the policy was last revised.
+              Please note that we do not alter our Site&apos;s data collection and use practices when we see a Do Not Track signal from your browser.
             </p>
           </section>
 
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">11. Contact Us</h2>
-            <p className="text-gray-600 leading-relaxed mb-6">
-              If you have any questions, concerns, or requests regarding this privacy policy or our data practices, please contact us:
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">Your Rights</h2>
+            <p className="text-gray-600 leading-relaxed mb-4">
+              If you are a European resident, you have the right to access personal information we hold about you and to ask that your personal information be corrected, updated, or deleted. If you would like to exercise this right, please contact us through the contact information below.
             </p>
+            <p className="text-gray-600 leading-relaxed">
+              Additionally, if you are a European resident we note that we are processing your information in order to fulfill contracts we might have with you (for example if you make an order through the Site), or otherwise to pursue our legitimate business interests listed above. Additionally, please note that your information will be transferred outside of Europe, including to Canada and the United States.
+            </p>
+          </section>
 
-            <div className="bg-gray-50 border border-gray-200 p-8 rounded-xl">
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <i className="ri-mail-line text-blue-700 text-xl mt-1"></i>
-                  <div>
-                    <p className="font-medium text-gray-900">Email</p>
-                    <a href="mailto:support@multimeysupplies.com" className="text-blue-700 hover:underline">support@multimeysupplies.com</a>
-                  </div>
-                </div>
+          <section className="mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">Data Retention</h2>
+            <p className="text-gray-600 leading-relaxed">
+              When you place an order through the Site, we will maintain your Order Information for our records unless and until you ask us to delete this information.
+            </p>
+          </section>
 
-                <div className="flex items-start gap-3">
-                  <i className="ri-phone-line text-blue-700 text-xl mt-1"></i>
-                  <div>
-                    <p className="font-medium text-gray-900">Phone</p>
-                    <a href="tel:+233209597443" className="text-blue-700 hover:underline">+233 20 959 7443</a>
-                  </div>
-                </div>
+          <section className="mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">Changes</h2>
+            <p className="text-gray-600 leading-relaxed">
+              We may update this privacy policy from time to time in order to reflect, for example, changes to our practices or for other operational, legal or regulatory reasons.
+            </p>
+          </section>
 
-                <div className="flex items-start gap-3">
-                  <i className="ri-map-pin-line text-blue-700 text-xl mt-1"></i>
-                  <div>
-                    <p className="font-medium text-gray-900">Address</p>
-                    <p className="text-gray-600">MultiMey Supplies<br />Accra, Ghana</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <section className="mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">Contact Us</h2>
+            <p className="text-gray-600 leading-relaxed mb-4">
+              For more information about our privacy practices, if you have questions, or if you would like to make a complaint, please contact us by e-mail at <a href="mailto:baddiecurves@gmail.com" className="text-blue-700 hover:underline font-medium">baddiecurves@gmail.com</a>.
+            </p>
+            <p className="text-gray-600 leading-relaxed">
+              <Link href="/contact" className="text-blue-700 hover:underline font-medium">Contact page</Link>
+            </p>
           </section>
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
@@ -260,9 +261,9 @@ export default function AdminLayout({
         `}
       >
         <div className="h-full px-4 py-6 overflow-y-auto">
-          <Link href="/admin" className="flex items-center mb-8 px-2 cursor-pointer">
-            <span className="text-xl font-['Pacifico'] text-blue-700">MultiMey</span>
-            <span className="ml-3 text-sm font-semibold text-gray-500">ADMIN</span>
+          <Link href="/admin" className="flex items-center gap-2 mb-8 px-2 cursor-pointer">
+            <Image src="/logo.png?v=4" alt="BADDIECURVES" width={56} height={18} className="h-5 w-auto object-contain" style={{ width: 'auto', height: 'auto' }} />
+            <span className="text-xs font-semibold text-gray-500 tracking-wide">ADMIN</span>
           </Link>
 
           <nav className="space-y-1">

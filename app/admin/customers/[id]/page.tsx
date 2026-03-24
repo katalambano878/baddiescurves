@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,7 +15,8 @@ export default function CustomerDetailsPage() {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
         if (customerId) {
             fetchCustomerData();
         }

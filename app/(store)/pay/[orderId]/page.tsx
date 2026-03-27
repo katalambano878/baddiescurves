@@ -5,9 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { useCurrency } from '@/lib/currency';
 
 export default function PaymentPage() {
   usePageTitle('Complete Payment');
+  const { formatPrice } = useCurrency();
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
@@ -146,23 +148,23 @@ export default function PaymentPage() {
           <div className="space-y-3 mb-6">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Subtotal</span>
-              <span className="text-gray-900">GH₵ {order?.subtotal?.toFixed(2)}</span>
+              <span className="text-gray-900">{formatPrice(order?.subtotal || 0)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Shipping</span>
-              <span className="text-gray-900">GH₵ {order?.shipping_total?.toFixed(2)}</span>
+              <span className="text-gray-900">{formatPrice(order?.shipping_total || 0)}</span>
             </div>
             {order?.discount_total > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Discount</span>
-                <span className="text-green-600">-GH₵ {order?.discount_total?.toFixed(2)}</span>
+                <span className="text-green-600">-{formatPrice(order?.discount_total || 0)}</span>
               </div>
             )}
           </div>
 
           <div className="flex justify-between items-center pt-4 border-t border-gray-200">
             <span className="text-lg font-semibold text-gray-900">Total</span>
-            <span className="text-2xl font-bold text-blue-700">GH₵ {order?.total?.toFixed(2)}</span>
+            <span className="text-2xl font-bold text-blue-700">{formatPrice(order?.total || 0)}</span>
           </div>
         </div>
 
@@ -218,7 +220,7 @@ export default function PaymentPage() {
           ) : (
             <>
               <i className="ri-secure-payment-line mr-2"></i>
-              Pay GH₵ {order?.total?.toFixed(2)} with Mobile Money
+              Pay {formatPrice(order?.total || 0)} with Mobile Money
             </>
           )}
         </button>

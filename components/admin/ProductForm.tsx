@@ -19,6 +19,8 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
     const [categoryId, setCategoryId] = useState(initialData?.category_id || '');
     const [price, setPrice] = useState(initialData?.price || '');
     const [comparePrice, setComparePrice] = useState(initialData?.compare_at_price || '');
+    const [priceGhs, setPriceGhs] = useState(initialData?.price_ghs || '');
+    const [comparePriceGhs, setComparePriceGhs] = useState(initialData?.compare_at_price_ghs || '');
     const [sku, setSku] = useState(initialData?.sku || '');
     const [stock, setStock] = useState(initialData?.quantity || '');
     const [moq, setMoq] = useState(initialData?.moq || '1');
@@ -96,14 +98,15 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
     const buildVariantKey = (color: string, size: string) => `${color}|||${size}`;
 
     // Store variant data (price, stock) in a map keyed by "color|||size"
-    const [variantData, setVariantData] = useState<Record<string, { price: string; stock: string; sku: string }>>(() => {
-        const data: Record<string, { price: string; stock: string; sku: string }> = {};
+    const [variantData, setVariantData] = useState<Record<string, { price: string; stock: string; sku: string; price_ghs: string }>>(() => {
+        const data: Record<string, { price: string; stock: string; sku: string; price_ghs: string }> = {};
         existingVariants.forEach((v: any) => {
             const key = buildVariantKey(v.color || '', v.size || '');
             data[key] = {
                 price: v.price?.toString() || '',
                 stock: v.stock?.toString() || '0',
-                sku: v.sku || ''
+                sku: v.sku || '',
+                price_ghs: v.price_ghs?.toString() || ''
             };
         });
         return data;
@@ -127,29 +130,31 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
 
     // Build the flat variants array for saving (used by handleSubmit)
     const variants = variantCombinations.map(combo => {
-        const d = variantData[combo.key] || { price: price, stock: '0', sku: '' };
+        const d = variantData[combo.key] || { price: price, stock: '0', sku: '', price_ghs: '' };
         return {
             name: combo.size,
             color: combo.color,
             sku: d.sku,
             price: d.price || price,
-            stock: d.stock || '0'
+            stock: d.stock || '0',
+            price_ghs: d.price_ghs || ''
         };
     });
+
+    const defaultVariantRow = { price: price, stock: '0', sku: '', price_ghs: '' };
 
     const updateVariantField = (key: string, field: string, value: string) => {
         setVariantData(prev => ({
             ...prev,
-            [key]: { ...prev[key] || { price: price, stock: '0', sku: '' }, [field]: value }
+            [key]: { ...prev[key] || defaultVariantRow, [field]: value }
         }));
     };
 
-    // Bulk set price/stock for all variants
-    const bulkSetField = (field: 'price' | 'stock', value: string) => {
+    const bulkSetField = (field: 'price' | 'stock' | 'price_ghs', value: string) => {
         setVariantData(prev => {
             const updated = { ...prev };
             variantCombinations.forEach(combo => {
-                updated[combo.key] = { ...updated[combo.key] || { price: price, stock: '0', sku: '' }, [field]: value };
+                updated[combo.key] = { ...updated[combo.key] || defaultVariantRow, [field]: value };
             });
             return updated;
         });
@@ -286,7 +291,9 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                 category_id: categoryId || null,
                 price: parseFloat(price) || 0,
                 compare_at_price: comparePrice ? parseFloat(comparePrice) : null,
-                sku: sku || generateSku(), // Auto-generate if empty
+                price_ghs: priceGhs ? parseFloat(priceGhs) : null,
+                compare_at_price_ghs: comparePriceGhs ? parseFloat(comparePriceGhs) : null,
+                sku: sku || generateSku(),
                 quantity: hasVariants ? variantStockTotal : (parseInt(stock) || 0),
                 moq: parseInt(moq) || 1,
                 status: status.toLowerCase(),
@@ -360,6 +367,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                             name: v.name || v.color || 'Default',
                             sku: v.sku || null,
                             price: parseFloat(v.price) || 0,
+                            price_ghs: v.price_ghs ? parseFloat(v.price_ghs) : null,
                             quantity: parseInt(v.stock) || 0,
                             option1: v.name || null,
                             option2: v.color?.trim() || null,
@@ -547,18 +555,22 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
 
                     {activeTab === 'pricing' && (
                         <div className="space-y-6 max-w-3xl">
+                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mb-2">
+                                <p className="text-amber-900 text-sm"><strong>USD</strong> is the base currency shown to international customers. <strong>Ghana price</strong> is shown only to visitors from Ghana.</p>
+                            </div>
+
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                        Price (GH₵) *
+                                        Price (USD) *
                                     </label>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">GH₵</span>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">$</span>
                                         <input
                                             type="number"
                                             value={price}
                                             onChange={(e) => setPrice(e.target.value)}
-                                            className="w-full pl-16 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             step="0.01"
                                             placeholder="0.00"
                                         />
@@ -567,15 +579,15 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                        Compare at Price (GH₵)
+                                        Compare at Price (USD)
                                     </label>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">GH₵</span>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">$</span>
                                         <input
                                             type="number"
                                             value={comparePrice}
                                             onChange={(e) => setComparePrice(e.target.value)}
-                                            className="w-full pl-16 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             step="0.01"
                                             placeholder="0.00"
                                         />
@@ -584,11 +596,48 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                 </div>
                             </div>
 
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                        Ghana Price (GH₵)
+                                    </label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">GH₵</span>
+                                        <input
+                                            type="number"
+                                            value={priceGhs}
+                                            onChange={(e) => setPriceGhs(e.target.value)}
+                                            className="w-full pl-16 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">Shown to visitors from Ghana. Leave empty to auto-convert from USD.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                        Ghana Compare Price (GH₵)
+                                    </label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">GH₵</span>
+                                        <input
+                                            type="number"
+                                            value={comparePriceGhs}
+                                            onChange={(e) => setComparePriceGhs(e.target.value)}
+                                            className="w-full pl-16 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                 <p className="text-blue-900 font-semibold mb-1">Discount Calculation</p>
                                 {price && comparePrice && parseFloat(comparePrice) > parseFloat(price) ? (
                                     <p className="text-blue-800">
-                                        Savings: GH₵ {(parseFloat(comparePrice) - parseFloat(price)).toFixed(2)}
+                                        Savings: ${(parseFloat(comparePrice) - parseFloat(price)).toFixed(2)}
                                         <span className="ml-2">
                                             ({(((parseFloat(comparePrice) - parseFloat(price)) / parseFloat(comparePrice)) * 100).toFixed(0)}% off)
                                         </span>
@@ -883,7 +932,8 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                                     {selectedSizes.length > 0 && (
                                                         <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Size</th>
                                                     )}
-                                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Price (GH₵)</th>
+                                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Price ($)</th>
+                                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ghana (GH₵)</th>
                                                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Stock</th>
                                                 </tr>
                                             </thead>
@@ -918,6 +968,16 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                                                     className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                                                     step="0.01"
                                                                     placeholder={price?.toString() || '0'}
+                                                                />
+                                                            </td>
+                                                            <td className="py-3 px-4">
+                                                                <input
+                                                                    type="number"
+                                                                    value={d.price_ghs}
+                                                                    onChange={(e) => updateVariantField(combo.key, 'price_ghs', e.target.value)}
+                                                                    className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                                    step="0.01"
+                                                                    placeholder="Auto"
                                                                 />
                                                             </td>
                                                             <td className="py-3 px-4">

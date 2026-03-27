@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import LazyImage from './LazyImage';
 import { useCart } from '@/context/CartContext';
+import { useCurrency } from '@/lib/currency';
 
 // Map common color names to hex values for swatches
 const COLOR_MAP: Record<string, string> = {
@@ -54,6 +55,9 @@ interface ProductCardProps {
   hasVariants?: boolean;
   minVariantPrice?: number;
   colorVariants?: ColorVariant[];
+  price_ghs?: number | null;
+  originalPrice_ghs?: number | null;
+  minVariantPrice_ghs?: number | null;
 }
 
 export default function ProductCard({
@@ -71,15 +75,17 @@ export default function ProductCard({
   moq = 1,
   hasVariants = false,
   minVariantPrice,
-  colorVariants = []
+  colorVariants = [],
+  price_ghs,
+  originalPrice_ghs,
+  minVariantPrice_ghs
 }: ProductCardProps) {
   const { addToCart } = useCart();
+  const { formatPrice, formatComparePrice, formatEquivalents } = useCurrency();
   const [activeColor, setActiveColor] = useState<string | null>(null);
   const displayPrice = hasVariants && minVariantPrice ? minVariantPrice : price;
   const discount = originalPrice ? Math.round((1 - displayPrice / originalPrice) * 100) : 0;
   const MAX_SWATCHES = 5;
-
-  const formatPrice = (val: number) => `GH\u20B5${val.toFixed(2)}`;
 
   return (
     <div className="group flex flex-col h-full bg-white rounded-[1.5rem] border border-black/[0.04] p-2.5 sm:p-3 hover:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.06)] hover:border-black/[0.08] transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]">
@@ -165,14 +171,19 @@ export default function ProductCard({
           </div>
         )}
 
-        <div className="flex items-center justify-center space-x-2.5 mt-auto pt-2">
+        <div className="flex flex-col items-center justify-center mt-auto pt-2">
           {hasVariants && minVariantPrice ? (
-            <span className="text-gray-900 font-medium text-[13.5px] tracking-wide">From {formatPrice(minVariantPrice)}</span>
+            <span className="text-gray-900 font-medium text-[13.5px] tracking-wide">From {formatPrice(minVariantPrice, minVariantPrice_ghs)}</span>
           ) : (
-            <span className="text-gray-900 font-medium text-[13.5px] tracking-wide">{formatPrice(price)}</span>
+            <span className="text-gray-900 font-medium text-[13.5px] tracking-wide">{formatPrice(price, price_ghs)}</span>
           )}
           {originalPrice && (
-            <span className="text-[12px] text-gray-400 line-through decoration-gray-300/70">{formatPrice(originalPrice)}</span>
+            <span className="text-[12px] text-gray-400 line-through decoration-gray-300/70">{formatComparePrice(originalPrice, originalPrice_ghs)}</span>
+          )}
+          {formatEquivalents(displayPrice) && (
+            <span className="text-[11px] text-gray-500 mt-1">
+              {formatEquivalents(displayPrice)}
+            </span>
           )}
         </div>
 

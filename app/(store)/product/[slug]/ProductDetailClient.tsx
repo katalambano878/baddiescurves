@@ -11,6 +11,7 @@ import { StructuredData, generateProductSchema, generateBreadcrumbSchema } from 
 import { notFound } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { useCurrency } from '@/lib/currency';
 
 // Map common color names to hex values for the swatch preview
 function colorNameToHex(name: string): string {
@@ -41,6 +42,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
 
   const { addToCart } = useCart();
+  const { formatPrice, formatComparePrice, formatEquivalents } = useCurrency();
 
   useEffect(() => {
     async function fetchProduct() {
@@ -255,7 +257,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
     description: product.description,
     image: product.images[0],
     price: hasVariants ? minVariantPrice : product.price,
-    currency: 'GHS',
+    currency: 'USD',
     sku: product.sku,
     rating: product.rating,
     reviewCount: product.reviewCount,
@@ -365,15 +367,20 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                 <div className="flex items-baseline space-x-3 mb-8">
                   {hasVariants && !selectedVariant ? (
                     <span className="text-2xl lg:text-[30px] font-medium text-gray-900">
-                      <span className="text-lg text-gray-400 font-light mr-1.5">From</span>GH₵{minVariantPrice.toFixed(2)}
+                      <span className="text-lg text-gray-400 font-light mr-1.5">From</span>{formatPrice(minVariantPrice, product.price_ghs)}
                     </span>
                   ) : (
-                    <span className="text-2xl lg:text-[30px] font-medium text-gray-900">GH₵{activePrice.toFixed(2)}</span>
+                    <span className="text-2xl lg:text-[30px] font-medium text-gray-900">{formatPrice(activePrice, selectedVariant?.price_ghs ?? product.price_ghs)}</span>
                   )}
                   {product.compare_at_price && product.compare_at_price > activePrice && (
-                    <span className="text-lg text-gray-400 line-through decoration-gray-300">GH₵{product.compare_at_price.toFixed(2)}</span>
+                    <span className="text-lg text-gray-400 line-through decoration-gray-300">{formatComparePrice(product.compare_at_price, product.compare_at_price_ghs)}</span>
                   )}
                 </div>
+                {formatEquivalents(activePrice) && (
+                  <p className="text-sm text-gray-500 -mt-5 mb-8">
+                    {formatEquivalents(activePrice)}
+                  </p>
+                )}
 
                 <p className="text-gray-500 leading-[1.8] mb-10 text-[15.5px] font-light max-w-[95%]">{product.description}</p>
 
@@ -473,7 +480,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                               >
                                 <span className="text-[14px]">{variant.name}</span>
                                 <span className={`text-[11px] mt-0.5 ${isSelected ? 'text-gray-500' : 'text-gray-400'}`}>
-                                  GH₵{(variant.price || product.price).toFixed(2)}
+                                  {formatPrice(variant.price || product.price, variant.price_ghs ?? product.price_ghs)}
                                 </span>
                               </button>
                             );
@@ -515,7 +522,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                               >
                                 <span className="text-[14px]">{variant.name}</span>
                                 <span className={`text-[11px] mt-0.5 ${isSelected ? 'text-gray-500' : 'text-gray-400'}`}>
-                                  GH₵{(variant.price || product.price).toFixed(2)}
+                                  {formatPrice(variant.price || product.price, variant.price_ghs ?? product.price_ghs)}
                                 </span>
                               </button>
                             );

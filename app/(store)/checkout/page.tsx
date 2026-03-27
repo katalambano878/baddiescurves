@@ -153,7 +153,7 @@ export default function CheckoutPage() {
           phone: shippingData.phone,
           status: 'pending',
           payment_status: 'pending',
-          currency: 'GHS',
+          currency: 'USD',
           subtotal: subtotal,
           tax_total: tax,
           shipping_total: shippingCost,

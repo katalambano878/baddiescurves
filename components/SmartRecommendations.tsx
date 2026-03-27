@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useCurrency } from '@/lib/currency';
 
 interface Product {
   id: string;
@@ -21,6 +22,7 @@ interface SmartRecommendationsProps {
 }
 
 export default function SmartRecommendations({ productId, type, title }: SmartRecommendationsProps) {
+  const { formatPrice, formatEquivalents } = useCurrency();
   const [products, setProducts] = useState<Product[]>([]);
 
   const allProducts: Product[] = [
@@ -137,11 +139,14 @@ export default function SmartRecommendations({ productId, type, title }: SmartRe
                   <span className="text-xs text-gray-500">({product.reviews})</span>
                 </div>
                 <div className="flex items-baseline space-x-2">
-                  <span className="text-lg font-bold text-gray-900">GH₵{product.price}</span>
+                  <span className="text-lg font-bold text-gray-900">{formatPrice(product.price)}</span>
                   {product.originalPrice && (
-                    <span className="text-sm text-gray-400 line-through">GH₵{product.originalPrice}</span>
+                    <span className="text-sm text-gray-400 line-through">{formatPrice(product.originalPrice)}</span>
                   )}
                 </div>
+                {formatEquivalents(product.price) && (
+                  <p className="text-xs text-gray-500 mt-1">{formatEquivalents(product.price)}</p>
+                )}
               </div>
             </Link>
           ))}

@@ -10,9 +10,11 @@ import { getColorHex } from '@/components/ProductCard';
 import { supabase } from '@/lib/supabase';
 import { cachedQuery } from '@/lib/query-cache';
 import PageHero from '@/components/PageHero';
+import { useCurrency } from '@/lib/currency';
 
 function ShopContent() {
   usePageTitle('Shop All Products');
+  const { currencyLabel } = useCurrency();
   const searchParams = useSearchParams();
 
   // State
@@ -310,7 +312,7 @@ function ShopContent() {
 
                     {/* Price Range */}
                     <div className="border-t border-gray-200 pt-8">
-                      <h3 className="font-semibold text-gray-900 mb-4">Max Price: GH₵{priceRange[1]}</h3>
+                      <h3 className="font-semibold text-gray-900 mb-4">Max Price: {currencyLabel}{priceRange[1]}</h3>
                       <div className="space-y-4">
                         <input
                           type="range"
@@ -325,8 +327,8 @@ function ShopContent() {
                           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-700"
                         />
                         <div className="flex items-center justify-between text-sm text-gray-600">
-                          <span>GH₵0</span>
-                          <span>GH₵5000+</span>
+                          <span>{currencyLabel}0</span>
+                          <span>{currencyLabel}5000+</span>
                         </div>
                       </div>
                     </div>
@@ -408,7 +410,7 @@ function ShopContent() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8" data-product-shop>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-8" data-product-shop>
                     {products.map(product => (
                       <ProductCard key={product.id} {...product} />
                     ))}

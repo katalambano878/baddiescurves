@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useCurrency } from '@/lib/currency';
 
 function OrderSuccessContent() {
+  const { formatPrice } = useCurrency();
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
   const paymentSuccess = searchParams.get('payment_success');
@@ -241,23 +243,23 @@ function OrderSuccessContent() {
                         </p>
                       )}
                     </div>
-                    <p className="font-bold text-gray-900">GH₵{item.unit_price.toFixed(2)}</p>
+                    <p className="font-bold text-gray-900">{formatPrice(item.unit_price)}</p>
                   </div>
                 ))}
               </div>
               <div className="border-t border-gray-200 mt-4 pt-4">
                 <div className="flex justify-between text-sm text-gray-600 mb-2">
                   <span>Subtotal</span>
-                  <span>GH₵{order.subtotal.toFixed(2)}</span>
+                  <span>{formatPrice(order.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-gray-600 mb-2">
                   <span>Shipping</span>
-                  <span>GH₵{order.shipping_total.toFixed(2)}</span>
+                  <span>{formatPrice(order.shipping_total)}</span>
                 </div>
 
                 <div className="flex justify-between text-xl font-bold text-gray-900 border-t border-gray-200 pt-2">
                   <span>Total Paid</span>
-                  <span>GH₵{order.total.toFixed(2)}</span>
+                  <span>{formatPrice(order.total)}</span>
                 </div>
               </div>
             </div>

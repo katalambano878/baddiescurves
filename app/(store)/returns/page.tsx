@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useCurrency } from '@/lib/currency';
 const mockOrders = [
   {
     id: 'ORD-2024-156',
@@ -27,6 +28,7 @@ const mockOrders = [
 ];
 
 export default function ReturnsPortalPage() {
+  const { formatPrice } = useCurrency();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [orderNumber, setOrderNumber] = useState('');
@@ -201,7 +203,7 @@ export default function ReturnsPortalPage() {
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900 mb-1">{item.name}</p>
-                        <p className="text-lg font-bold text-gray-900 mb-3">GH₵{item.price.toFixed(2)}</p>
+                        <p className="text-lg font-bold text-gray-900 mb-3">{formatPrice(item.price)}</p>
                         
                         {selectedItems.includes(item.id) && (
                           <div className="mt-4">
@@ -298,7 +300,7 @@ export default function ReturnsPortalPage() {
                           <p className="font-semibold text-gray-900">{item.name}</p>
                           <p className="text-sm text-gray-600">Reason: {returnReasons[item.id]}</p>
                         </div>
-                        <p className="font-bold text-gray-900">GH₵{item.price.toFixed(2)}</p>
+                        <p className="font-bold text-gray-900">{formatPrice(item.price)}</p>
                       </div>
                     ))}
                 </div>

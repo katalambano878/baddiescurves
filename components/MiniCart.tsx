@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
+import { useCurrency } from '@/lib/currency';
 
 interface MiniCartProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface MiniCartProps {
 
 export default function MiniCart({ isOpen, onClose }: MiniCartProps) {
   const { cart, removeFromCart, updateQuantity, subtotal } = useCart();
+  const { formatPrice } = useCurrency();
 
   // Lock body scroll when cart is open
   useEffect(() => {
@@ -96,7 +98,7 @@ export default function MiniCart({ isOpen, onClose }: MiniCartProps) {
 
                       <div className="flex items-center justify-between mt-auto">
                         <span className="text-[17px] font-bold text-[#0A0F1D]">
-                          GH₵{item.price.toFixed(2)}
+                          {formatPrice(item.price)}
                         </span>
 
                         <div className="flex items-center border border-gray-200 rounded text-[#111827] bg-white h-9 shadow-sm">
@@ -133,7 +135,7 @@ export default function MiniCart({ isOpen, onClose }: MiniCartProps) {
             <div className="border-t border-gray-100 p-6 bg-white shrink-0">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-[#374151] font-[500] text-[17px]">Subtotal</span>
-                <span className="text-[24px] font-bold text-[#111827]">GH₵{subtotal.toFixed(2)}</span>
+                <span className="text-[24px] font-bold text-[#111827]">{formatPrice(subtotal)}</span>
               </div>
 
               <p className="text-[15px] text-[#6b7280] mb-6 text-center">

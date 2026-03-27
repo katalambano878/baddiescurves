@@ -17,6 +17,20 @@ export async function middleware(request: NextRequest) {
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
     // ============================================================
+    // Geo-detection: set country cookie for dual-currency pricing
+    // Vercel injects x-vercel-ip-country on every edge request.
+    // ?country=GH / ?country=US query param overrides for testing.
+    // ============================================================
+    const countryParam = request.nextUrl.searchParams.get('country');
+    const geoCountry = request.headers.get('x-vercel-ip-country') || 'US';
+    const country = countryParam || geoCountry;
+    response.cookies.set('country', country, {
+        path: '/',
+        maxAge: 60 * 60 * 24,
+        sameSite: 'lax',
+    });
+
+    // ============================================================
     // Admin route protection
     // ============================================================
     if (pathname.startsWith('/admin')) {
@@ -125,7 +139,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        '/admin/:path*',
-        '/api/:path*',
+        '/((?!_next/static|_next/image|favicon|logo|manifest|robots|sitemap|service-worker|icons).*)',
     ],
 };

@@ -80,8 +80,8 @@ const defaultSettings: SiteSettings = {
     social_youtube: '',
     primary_color: '#059669',
     secondary_color: '#0D9488',
-    currency: 'GHS',
-    currency_symbol: 'GH₵',
+    currency: 'USD',
+    currency_symbol: '$',
 };
 
 const CMSContext = createContext<CMSContextType>({
@@ -111,8 +111,8 @@ export function CMSProvider({ children }: { children: ReactNode }) {
         social_youtube: '',
         primary_color: '#059669',
         secondary_color: '#0D9488',
-        currency: 'GHS',
-        currency_symbol: 'GH₵',
+        currency: 'USD',
+        currency_symbol: '$',
     });
     const [content, setContent] = useState<CMSContent[]>([]);
     const [banners, setBanners] = useState<Banner[]>([]);

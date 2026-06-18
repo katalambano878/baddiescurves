@@ -88,7 +88,11 @@ export async function POST(req: Request) {
         // ============================================================
         // EXTRACT FIELDS - Moolre nests payment data inside body.data
         // ============================================================
-        const data = body.data || {};
+        const data = body.data && typeof body.data === 'object' ? body.data : {};
+        const callbackMetadata =
+            (data.metadata && typeof data.metadata === 'object' ? data.metadata : null) ||
+            (body.metadata && typeof body.metadata === 'object' ? body.metadata : null) ||
+            {};
 
         // Order reference: check body.data.externalref first, then top-level fallbacks
         const rawExternalRef =
@@ -101,8 +105,8 @@ export async function POST(req: Request) {
 
         // Strip retry suffix (e.g., "ORD-123-R1770000000" -> "ORD-123")
         const merchantOrderRef = rawExternalRef
-            ? rawExternalRef.replace(/-R\d+$/, '')
-            : (data.metadata?.original_order_number || body.metadata?.original_order_number);
+            ? String(rawExternalRef).replace(/-R\d+$/, '')
+            : callbackMetadata.original_order_number;
 
         // Moolre's transaction reference
         const moolreReference =
@@ -111,15 +115,17 @@ export async function POST(req: Request) {
             body.reference ||
             'callback';
 
-        // Payment status: body.status === 1 means API call succeeded,
-        // body.data.txtstatus === 1 means transaction was successful
+        // Payment status: body.status === 1 means webhook succeeded,
+        // body.data.txtstatus === 1 means the transaction succeeded
         const apiStatus = body.status;
-        const txStatus = data.txtstatus;
+        const txStatus = data.txtstatus ?? data.txstatus;
         const messageStr = String(body.message || '').toLowerCase();
+        const successCode = String(body.code || '').toUpperCase();
 
         console.log('[Callback] Order ref:', merchantOrderRef,
             '| API status:', apiStatus,
             '| TX status:', txStatus,
+            '| Code:', body.code,
             '| Message:', body.message,
             '| Moolre ref:', moolreReference);
 
@@ -129,18 +135,20 @@ export async function POST(req: Request) {
         }
 
         // ============================================================
-        // SECURITY: Strict success validation
-        // Require BOTH api status AND transaction status to be success,
-        // OR the message explicitly indicates success (as fallback only 
-        // when both status fields are present and consistent).
+        // SECURITY: Strict success validation (matches Moolre webhook spec)
+        // Require BOTH top-level status AND transaction txtstatus/txstatus.
+        // Do not trust message text alone.
         // ============================================================
-        const apiOk = (apiStatus === 1 || apiStatus === '1');
-        const txOk = (txStatus === 1 || txStatus === '1');
-        const messageOk = messageStr.includes('successful') || messageStr.includes('success');
+        const apiOk = apiStatus === 1 || apiStatus === '1';
+        const txOk = txStatus === 1 || txStatus === '1';
+        const codeOk = !successCode || successCode === 'P01';
+        const messageIndicatesFailure =
+            messageStr.includes('fail') ||
+            messageStr.includes('error') ||
+            messageStr.includes('declin') ||
+            messageStr.includes('cancel');
 
-        // Require at least api status OR tx status to be explicitly successful
-        // AND the message must not indicate failure
-        const isSuccess = (apiOk || txOk) && !messageStr.includes('fail') && !messageStr.includes('error');
+        const isSuccess = apiOk && txOk && codeOk && !messageIndicatesFailure;
 
         if (isSuccess) {
             console.log(`[Callback] Payment SUCCESS for Order ${merchantOrderRef}`);
@@ -164,18 +172,30 @@ export async function POST(req: Request) {
             }
 
             // ============================================================
-            // SECURITY: Verify amount matches — REJECT if mismatch
+            // SECURITY: Verify amount matches — REJECT if missing or mismatch
+            // Moolre sends amount/value inside body.data
             // ============================================================
-            const callbackAmount = data.amount ? parseFloat(data.amount) : (body.amount ? parseFloat(body.amount) : null);
-            if (callbackAmount !== null) {
-                const expectedAmount = Number(existingOrder.total);
-                if (Math.abs(callbackAmount - expectedAmount) > 0.01) {
-                    console.error('[Callback] AMOUNT MISMATCH — REJECTING! Expected:', expectedAmount, 'Got:', callbackAmount, 'Order:', merchantOrderRef);
-                    return NextResponse.json({
-                        success: false,
-                        message: 'Payment amount does not match order total'
-                    }, { status: 400 });
-                }
+            const rawAmount = data.amount ?? data.value ?? body.amount;
+            const callbackAmount =
+                rawAmount != null && rawAmount !== ''
+                    ? parseFloat(String(rawAmount))
+                    : NaN;
+
+            if (Number.isNaN(callbackAmount)) {
+                console.error('[Callback] Missing payment amount for order:', merchantOrderRef);
+                return NextResponse.json({
+                    success: false,
+                    message: 'Missing payment amount'
+                }, { status: 400 });
+            }
+
+            const expectedAmount = Number(existingOrder.total);
+            if (Math.abs(callbackAmount - expectedAmount) > 0.01) {
+                console.error('[Callback] AMOUNT MISMATCH — REJECTING! Expected:', expectedAmount, 'Got:', callbackAmount, 'Order:', merchantOrderRef);
+                return NextResponse.json({
+                    success: false,
+                    message: 'Payment amount does not match order total'
+                }, { status: 400 });
             }
 
             // Mark order as paid via RPC
@@ -224,16 +244,26 @@ export async function POST(req: Request) {
             // Payment failed
             console.log(`[Callback] Payment FAILED for ${merchantOrderRef} | Status: ${apiStatus} | TX: ${txStatus}`);
 
-            await supabaseAdmin
+            const { data: failedOrder } = await supabaseAdmin
                 .from('orders')
-                .update({
-                    payment_status: 'failed',
-                    metadata: {
-                        moolre_reference: moolreReference,
-                        failure_reason: body.message || 'Payment failed'
-                    }
-                })
-                .eq('order_number', merchantOrderRef);
+                .select('metadata, payment_status')
+                .eq('order_number', merchantOrderRef)
+                .maybeSingle();
+
+            if (failedOrder && failedOrder.payment_status !== 'paid') {
+                await supabaseAdmin
+                    .from('orders')
+                    .update({
+                        payment_status: 'failed',
+                        metadata: {
+                            ...(failedOrder.metadata || {}),
+                            moolre_reference: moolreReference,
+                            failure_reason: body.message || 'Payment failed',
+                            moolre_callback_code: body.code || null
+                        }
+                    })
+                    .eq('order_number', merchantOrderRef);
+            }
 
             return NextResponse.json({ success: false, message: 'Payment not successful' });
         }

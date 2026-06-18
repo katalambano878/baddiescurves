@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         // NEVER trust the amount from the client.
         const { data: order, error: orderError } = await supabaseAdmin
             .from('orders')
-            .select('id, order_number, total, email, payment_status')
+            .select('id, order_number, total, email, payment_status, metadata')
             .or(`id.eq.${orderId},order_number.eq.${orderId}`)
             .single();
 
@@ -99,6 +99,18 @@ export async function POST(req: Request) {
         console.log('[Payment] Response status:', result.status, '| Has URL:', !!result.data?.authorization_url);
 
         if (result.status === 1 && result.data?.authorization_url) {
+            await supabaseAdmin
+                .from('orders')
+                .update({
+                    metadata: {
+                        ...(order.metadata || {}),
+                        payment_method: 'moolre',
+                        moolre_external_ref: uniqueRef,
+                        moolre_link_reference: result.data.reference || null
+                    }
+                })
+                .eq('id', order.id);
+
             return NextResponse.json({ success: true, url: result.data.authorization_url, reference: result.data.reference });
         } else {
             return NextResponse.json({ success: false, message: result.message || 'Failed to generate payment link' }, { status: 400 });

@@ -8,7 +8,9 @@
     "react-dom": "^19.0.0",
     "recharts": "^3.0.2",
     "resend": "^6.9.1",
-    "sharp": "^0.34.5"
+    "sharp": "^0.34.5",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.9.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -22,7 +24,10 @@
     "postcss": "^8.5.5",
     "supabase": "^2.76.0",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/pg": "^8.11.10",
+    "dotenv-cli": "^7.4.2"
   },
   "name": "baddiescurves",
   "private": true,
@@ -35,7 +40,8 @@
     "supabase:push": "supabase db push",
     "supabase:migrate": "supabase link --project-ref xjvfriognajusceztocl && supabase db push",
     "db:migrate": "node scripts/run-migration.mjs",
-    "create-admin": "node scripts/create-admin-user.mjs"
+    "create-admin": "node scripts/create-admin-user.mjs",
+    "start": "next start -H 0.0.0.0 -p 3000"
   },
   "version": "0.1.0"
 }

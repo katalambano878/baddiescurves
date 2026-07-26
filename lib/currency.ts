@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { money } from '@/lib/format-money';
 
 const USD_TO_GBP = 0.79;
 const USD_TO_EUR = 0.92;
@@ -32,7 +33,7 @@ export function formatUSD(amount: number): string {
 }
 
 export function formatGHS(amount: number): string {
-  return `GH₵${Number(amount || 0).toFixed(2)}`;
+  return `GH₵${money(amount || 0)}`;
 }
 
 export function formatGBPFromUSD(amount: number): string {

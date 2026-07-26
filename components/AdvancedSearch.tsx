@@ -1,5 +1,5 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';

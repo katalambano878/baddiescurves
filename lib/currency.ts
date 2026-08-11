@@ -51,14 +51,44 @@ export function formatUsdEquivalents(amount: number): string {
 function getCountryCookie(): string {
   if (typeof document === 'undefined') return 'US';
   const match = document.cookie.match(/(?:^|;\s*)country=([^;]*)/);
-  return match ? match[1] : 'US';
+  return match ? decodeURIComponent(match[1]) : 'US';
 }
 
+function setCountryCookie(code: string) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `country=${encodeURIComponent(code)}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
+}
+
+/**
+ * Ghana detection for pricing + payments.
+ * Refreshes via /api/geo (IP lookup) because Coolify often has no CF-IPCountry
+ * and an early default country=US cookie would hide Moolre forever.
+ */
 export function useIsGhana(): boolean {
   const [country, setCountry] = useState(() => getCountryCookie());
 
   useEffect(() => {
-    setCountry(getCountryCookie());
+    let cancelled = false;
+
+    async function refreshGeo() {
+      try {
+        const res = await fetch('/api/geo', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const code = String(data?.country || '').toUpperCase();
+        if (!cancelled && /^[A-Z]{2}$/.test(code)) {
+          setCountryCookie(code);
+          setCountry(code);
+        }
+      } catch {
+        if (!cancelled) setCountry(getCountryCookie());
+      }
+    }
+
+    refreshGeo();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return country === 'GH';

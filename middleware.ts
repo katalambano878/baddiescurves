@@ -61,7 +61,7 @@ async function verifyPlainPgAdmin(token: string): Promise<{ ok: boolean; userId?
   }
 }
 
-function resolveCountryCode(request: NextRequest): string {
+function countryFromHeaders(request: NextRequest): string | null {
   const headerCandidates = [
     request.headers.get('cf-ipcountry'),
     request.headers.get('x-vercel-ip-country'),
@@ -74,7 +74,7 @@ function resolveCountryCode(request: NextRequest): string {
       return code;
     }
   }
-  return 'US';
+  return null;
 }
 
 export async function middleware(request: NextRequest) {
@@ -85,9 +85,11 @@ export async function middleware(request: NextRequest) {
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // Geo cookie for Ghana (Moolre/GHS) vs international (PayPal/USD)
-  if (!request.cookies.get('country')?.value) {
-    response.cookies.set('country', resolveCountryCode(request), {
+  // Only set country from real geo headers. Do NOT default to US here —
+  // Coolify rarely sends CF-IPCountry; client calls /api/geo for IP lookup.
+  const headerCountry = countryFromHeaders(request);
+  if (headerCountry && !request.cookies.get('country')?.value) {
+    response.cookies.set('country', headerCountry, {
       path: '/',
       maxAge: 60 * 60 * 24 * 30,
       sameSite: 'lax',

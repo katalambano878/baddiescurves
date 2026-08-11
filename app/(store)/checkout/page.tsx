@@ -57,12 +57,15 @@ export default function CheckoutPage() {
   ];
 
   const [deliveryMethod, setDeliveryMethod] = useState('pickup');
-  // Ghana → Moolre (GHS); international → PayPal (USD)
-  const paymentMethod = isGhana ? 'moolre' : 'paypal';
-  const orderCurrency = isGhana ? 'GHS' : 'USD';
+  // Default: Ghana → Moolre (GHS); international → PayPal (USD). User can switch.
+  const [paymentMethod, setPaymentMethod] = useState<'moolre' | 'paypal'>(isGhana ? 'moolre' : 'paypal');
+  const orderCurrency = paymentMethod === 'moolre' ? 'GHS' : 'USD';
   const [errors, setErrors] = useState<any>({});
 
-
+  // Keep default gateway in sync when geo resolves (e.g. GH after /api/geo)
+  useEffect(() => {
+    setPaymentMethod(isGhana ? 'moolre' : 'paypal');
+  }, [isGhana]);
 
   // Check auth and cart
   useEffect(() => {
@@ -595,11 +598,43 @@ export default function CheckoutPage() {
                     */}
                   </div>
 
-                  <p className="text-sm text-gray-600 mt-4">
-                    {isGhana
-                      ? 'Ghana customers pay securely with Mobile Money (Moolre) in GH₵.'
-                      : 'International customers pay securely with PayPal in USD.'}
-                  </p>
+                  <div className="mt-6 space-y-3">
+                    <p className="text-sm font-semibold text-gray-900">Payment method</p>
+                    <label className={`flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'moolre' ? 'border-blue-700 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}>
+                      <div className="flex items-center space-x-4">
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="moolre"
+                          checked={paymentMethod === 'moolre'}
+                          onChange={() => setPaymentMethod('moolre')}
+                          className="w-5 h-5 text-blue-700"
+                        />
+                        <div>
+                          <p className="font-semibold text-gray-900">Mobile Money (Ghana)</p>
+                          <p className="text-sm text-gray-600">Pay in GH₵ via Moolre</p>
+                        </div>
+                      </div>
+                      <i className="ri-smartphone-line text-2xl text-blue-700"></i>
+                    </label>
+                    <label className={`flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'paypal' ? 'border-blue-700 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}>
+                      <div className="flex items-center space-x-4">
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="paypal"
+                          checked={paymentMethod === 'paypal'}
+                          onChange={() => setPaymentMethod('paypal')}
+                          className="w-5 h-5 text-blue-700"
+                        />
+                        <div>
+                          <p className="font-semibold text-gray-900">PayPal (International)</p>
+                          <p className="text-sm text-gray-600">Pay in USD via PayPal</p>
+                        </div>
+                      </div>
+                      <i className="ri-paypal-line text-2xl text-blue-700"></i>
+                    </label>
+                  </div>
 
                   <div className="flex flex-col-reverse md:flex-row gap-4 mt-6">
                     <button
@@ -622,7 +657,7 @@ export default function CheckoutPage() {
                           </svg>
                           Processing...
                         </>
-                      ) : isGhana ? (
+                      ) : paymentMethod === 'moolre' ? (
                         'Pay with Mobile Money'
                       ) : (
                         <>

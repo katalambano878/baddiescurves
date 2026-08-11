@@ -61,6 +61,22 @@ async function verifyPlainPgAdmin(token: string): Promise<{ ok: boolean; userId?
   }
 }
 
+function resolveCountryCode(request: NextRequest): string {
+  const headerCandidates = [
+    request.headers.get('cf-ipcountry'),
+    request.headers.get('x-vercel-ip-country'),
+    request.headers.get('x-country-code'),
+    request.headers.get('cloudfront-viewer-country'),
+  ];
+  for (const raw of headerCandidates) {
+    const code = (raw || '').trim().toUpperCase();
+    if (code && code !== 'XX' && /^[A-Z]{2}$/.test(code)) {
+      return code;
+    }
+  }
+  return 'US';
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
@@ -68,6 +84,15 @@ export async function middleware(request: NextRequest) {
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // Geo cookie for Ghana (Moolre/GHS) vs international (PayPal/USD)
+  if (!request.cookies.get('country')?.value) {
+    response.cookies.set('country', resolveCountryCode(request), {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30,
+      sameSite: 'lax',
+    });
+  }
 
   if (pathname.startsWith('/admin')) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
@@ -150,10 +175,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/admin/:path*',
-    '/api/:path*',
-    '/rest/:path*',
-    '/auth/v1/:path*',
-    '/storage/:path*',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|js|css|woff2?)$).*)',
   ],
 };

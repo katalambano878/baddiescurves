@@ -9,11 +9,13 @@ import { useCart } from '@/context/CartContext';
 import { supabase } from '@/lib/supabase';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
+import { useIsGhana } from '@/lib/currency';
 
 export default function CheckoutPage() {
   usePageTitle('Checkout');
   const router = useRouter();
   const { cart, subtotal: cartSubtotal, clearCart } = useCart();
+  const isGhana = useIsGhana();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +57,9 @@ export default function CheckoutPage() {
   ];
 
   const [deliveryMethod, setDeliveryMethod] = useState('pickup');
-  const [paymentMethod, setPaymentMethod] = useState('moolre');
+  // Ghana → Moolre (GHS); international → PayPal (USD)
+  const paymentMethod = isGhana ? 'moolre' : 'paypal';
+  const orderCurrency = isGhana ? 'GHS' : 'USD';
   const [errors, setErrors] = useState<any>({});
 
 
@@ -153,7 +157,7 @@ export default function CheckoutPage() {
           phone: shippingData.phone,
           status: 'pending',
           payment_status: 'pending',
-          currency: 'USD',
+          currency: orderCurrency,
           subtotal: subtotal,
           tax_total: tax,
           shipping_total: shippingCost,
@@ -167,7 +171,8 @@ export default function CheckoutPage() {
             guest_checkout: !user,
             first_name: shippingData.firstName,
             last_name: shippingData.lastName,
-            tracking_number: trackingNumber
+            tracking_number: trackingNumber,
+            payment_method: paymentMethod,
           }
         }])
         .select()
@@ -246,17 +251,17 @@ export default function CheckoutPage() {
         p_address: shippingData
       });
 
-      // 4. Handle Payment Redirects or Completion
-      if (paymentMethod === 'moolre') {
+      // 4. Handle Payment Redirects (Moolre for Ghana, PayPal for international)
+      if (paymentMethod === 'moolre' || paymentMethod === 'paypal') {
         try {
-          // Payment link reminder will be sent automatically after 15 mins if unpaid (via cron)
+          const endpoint =
+            paymentMethod === 'paypal' ? '/api/payment/paypal' : '/api/payment/moolre';
 
-          const paymentRes = await fetch('/api/payment/moolre', {
+          const paymentRes = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               orderId: orderNumber,
-              amount: total,
               customerEmail: shippingData.email
             })
           });
@@ -267,22 +272,18 @@ export default function CheckoutPage() {
             throw new Error(paymentResult.message || 'Payment initialization failed');
           }
 
-          // Clear cart before redirecting
           clearCart();
-
-          // Redirect to Moolre
           window.location.href = paymentResult.url;
           return;
-
         } catch (paymentErr: any) {
           console.error('Payment Error:', paymentErr);
           alert('Failed to initialize payment: ' + paymentErr.message);
           setIsLoading(false);
-          return; // Stop execution
+          return;
         }
       }
 
-      // 5. Send Notifications (For COD or others)
+      // Fallback (should not reach for storefront)
       fetch('/api/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -292,7 +293,6 @@ export default function CheckoutPage() {
         })
       }).catch(err => console.error('Notification trigger error:', err));
 
-      // 6. Clear Cart & Redirect (For COD)
       clearCart();
       router.push(`/order-success?order=${orderNumber}`);
 
@@ -595,6 +595,12 @@ export default function CheckoutPage() {
                     */}
                   </div>
 
+                  <p className="text-sm text-gray-600 mt-4">
+                    {isGhana
+                      ? 'Ghana customers pay securely with Mobile Money (Moolre) in GH₵.'
+                      : 'International customers pay securely with PayPal in USD.'}
+                  </p>
+
                   <div className="flex flex-col-reverse md:flex-row gap-4 mt-6">
                     <button
                       onClick={() => setCurrentStep(1)}
@@ -616,8 +622,13 @@ export default function CheckoutPage() {
                           </svg>
                           Processing...
                         </>
-                      ) : (
+                      ) : isGhana ? (
                         'Pay with Mobile Money'
+                      ) : (
+                        <>
+                          <i className="ri-paypal-line mr-2 text-xl"></i>
+                          Pay with PayPal
+                        </>
                       )}
                     </button>
                   </div>

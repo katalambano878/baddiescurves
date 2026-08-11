@@ -12,6 +12,7 @@ function OrderSuccessContent() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
   const paymentSuccess = searchParams.get('payment_success');
+  const gatewayParam = searchParams.get('gateway');
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(true);
@@ -51,40 +52,50 @@ function OrderSuccessContent() {
     fetchOrder();
   }, [orderNumber]);
 
-  // Payment verification - called when user is redirected from Moolre with payment_success=true
+  // Payment verification after redirect from Moolre or PayPal
   const verifyPayment = async (orderNum: string, initialOrder: any) => {
     setVerifying(true);
-    
-    // Wait 3 seconds to give the callback a chance to process first
+
+    // Wait briefly so webhook/callback can process first
     await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Re-fetch order to check if callback already updated it
+
     const { data: refreshed } = await supabase
       .from('orders')
       .select('*, order_items (*)')
       .eq('order_number', orderNum)
       .single();
-    
+
     if (refreshed?.payment_status === 'paid') {
       setOrder(refreshed);
       setVerifying(false);
       return;
     }
 
-    // Callback hasn't fired - verify via our endpoint
-    // Verify payment via Moolre API — we no longer trust the redirect alone
+    const method =
+      gatewayParam ||
+      refreshed?.payment_method ||
+      refreshed?.metadata?.payment_method ||
+      initialOrder?.payment_method ||
+      initialOrder?.metadata?.payment_method ||
+      'moolre';
+
+    const endpoint =
+      method === 'paypal' ? '/api/payment/paypal/capture' : '/api/payment/moolre/verify';
+
     try {
-      const res = await fetch('/api/payment/moolre/verify', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderNumber: orderNum })
+        body: JSON.stringify({
+          orderNumber: orderNum,
+          paypalOrderId: refreshed?.metadata?.paypal_order_id || initialOrder?.metadata?.paypal_order_id,
+        })
       });
-      
+
       const result = await res.json();
       console.log('Payment verification result:', result);
-      
+
       if (result.success && result.payment_status === 'paid') {
-        // Re-fetch full order data
         const { data: updated } = await supabase
           .from('orders')
           .select('*, order_items (*)')

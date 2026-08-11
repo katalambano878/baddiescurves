@@ -58,6 +58,12 @@ export default function PaymentPage() {
     }
   }, [orderId, router]);
 
+  const paymentMethod =
+    order?.payment_method ||
+    order?.metadata?.payment_method ||
+    (String(order?.currency || '').toUpperCase() === 'USD' ? 'paypal' : 'moolre');
+  const isPayPal = paymentMethod === 'paypal';
+
   const handlePayNow = async () => {
     if (!order) return;
 
@@ -65,12 +71,12 @@ export default function PaymentPage() {
     setError(null);
 
     try {
-      const paymentRes = await fetch('/api/payment/moolre', {
+      const endpoint = isPayPal ? '/api/payment/paypal' : '/api/payment/moolre';
+      const paymentRes = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId: order.order_number,
-          amount: order.total,
           customerEmail: order.email
         })
       });
@@ -81,7 +87,6 @@ export default function PaymentPage() {
         throw new Error(paymentResult.message || 'Payment initialization failed');
       }
 
-      // Redirect to Moolre payment page
       window.location.href = paymentResult.url;
 
     } catch (err: any) {
@@ -219,8 +224,8 @@ export default function PaymentPage() {
             </>
           ) : (
             <>
-              <i className="ri-secure-payment-line mr-2"></i>
-              Pay {formatPrice(order?.total || 0)} with Mobile Money
+              <i className={`${isPayPal ? 'ri-paypal-line' : 'ri-secure-payment-line'} mr-2`}></i>
+              Pay {formatPrice(order?.total || 0)} {isPayPal ? 'with PayPal' : 'with Mobile Money'}
             </>
           )}
         </button>
@@ -229,7 +234,7 @@ export default function PaymentPage() {
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-500 flex items-center justify-center">
             <i className="ri-lock-line mr-1"></i>
-            Secure payment powered by Moolre
+            Secure payment powered by {isPayPal ? 'PayPal' : 'Moolre'}
           </p>
         </div>
 

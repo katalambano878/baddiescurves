@@ -5,7 +5,62 @@
 **Branch:** `staging/plain-postgres`  
 **Coolify staging:** `baddiescurves-staging` (`oyz3y63jq2asmekrlu8v1tr2`)  
 **Staging URL:** https://baddiescurves-staging.169-58-8-203.sslip.io  
-**DB:** `fleet-postgres` / `store_baddiescurves` (provision with `sudo fleet db provision baddiescurves` if missing)
+**Custom domain:** https://baddiecurves.com (also `www`) — attached on Coolify Aug 2026  
+**DB:** `fleet-postgres` / `baddiescurves_staging`  
+
+## Plain-PG schema fixes (Aug 2026)
+
+Checkout failed with `null value in column "id" of relation "orders"` until UUID defaults + missing RPC were applied:
+
+```bash
+# On big-vps against the live DB:
+sudo docker exec -i fleet-postgres psql -U postgres -d baddiescurves_staging \
+  -f /path/to/scripts/fix-plain-pg-defaults.sql
+```
+
+That script sets `id DEFAULT gen_random_uuid()` on all public UUID PKs and creates `mark_order_paid` (needed for Moolre callback/verify).
+
+Also apply `scripts/fix-plain-pg-more.sql` for:
+- `contact_submissions` table
+- `support_tickets.ticket_number` sequence default
+- `auth.users.id` default
+- unique index on `orders.order_number`
+- seed `store_modules` rows
+
+### Missing Coolify env (blocks payments / email)
+
+As of Aug 2026 staging container had **no** Moolre / Resend / reCAPTCHA / cron secrets. Set these in Coolify before live payments:
+
+- `MOOLRE_API_USER`, `MOOLRE_API_PUBKEY`, `MOOLRE_ACCOUNT_NUMBER`, `MOOLRE_MERCHANT_EMAIL`, `MOOLRE_CALLBACK_SECRET`
+- optional SMS: `MOOLRE_SMS_API_KEY`, `MOOLRE_SMS_SENDER_ID`
+- `RESEND_API_KEY` (+ `EMAIL_FROM` / `ADMIN_EMAIL` if used)
+- optional: `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `CRON_SECRET`
+
+Moolre account numbers are **per-store** — do not copy another store’s `MOOLRE_ACCOUNT_NUMBER`.
+
+### PayPal (international / USD) + Moolre (Ghana / GHS)
+
+Checkout routes by geo (`country` cookie from middleware geo headers):
+
+| Visitor | Gateway | Currency |
+|---------|---------|----------|
+| Ghana (`GH`) | Moolre | GHS |
+| Everyone else | PayPal Orders v2 | USD |
+
+PayPal env (Coolify):
+
+```
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_MODE=sandbox
+PAYPAL_WEBHOOK_ID=
+NEXT_PUBLIC_APP_URL=https://baddiecurves.com
+```
+
+Webhook URL to register in PayPal developer dashboard:  
+`https://baddiecurves.com/api/payment/paypal/webhook`
+
+Both gateways still need Resend (and Moolre SMS if used) for order confirmation.
 
 See also: store hardening playbook in the big-vps workspace (`STORE_HARDENING_PLAYBOOK.md`).
 

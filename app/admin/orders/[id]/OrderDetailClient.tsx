@@ -566,9 +566,19 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                   {/* Transaction ID might be in metadata depending on callback */}
                   <span className="text-gray-600">Transaction</span>
                   <span className="text-sm text-gray-900 font-mono truncate max-w-[150px]">
-                    {order.metadata?.moolre_reference || order.payment_transaction_id || 'N/A'}
+                    {order.metadata?.paypal_capture_id ||
+                      order.metadata?.paypal_order_id ||
+                      order.metadata?.moolre_reference ||
+                      order.payment_transaction_id ||
+                      'N/A'}
                   </span>
                 </div>
+                {order.currency && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Currency</span>
+                    <span className="font-semibold text-gray-900">{order.currency}</span>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -249,6 +249,7 @@ export default function AdminLayout({
     { title: 'Customers', icon: 'ri-group-line', path: '/admin/customers' },
     { title: 'Reviews', icon: 'ri-chat-smile-2-line', path: '/admin/reviews' },
     { title: 'Inventory', icon: 'ri-stack-line', path: '/admin/inventory' },
+    { title: 'Shipping', icon: 'ri-truck-line', path: '/admin/shipping' },
     { title: 'Analytics', icon: 'ri-bar-chart-line', path: '/admin/analytics' },
     { title: 'Coupons', icon: 'ri-coupon-2-line', path: '/admin/coupons' },
     {
@@ -291,16 +292,16 @@ export default function AdminLayout({
         `}
       >
         <div className="h-full px-4 py-6 overflow-y-auto">
-          <Link href="/admin" className="flex items-center gap-2 mb-8 px-2 cursor-pointer">
+          <Link href="/admin" className="flex items-center gap-2 mb-6 px-2 cursor-pointer">
             <Image
               src="/logo.png?v=4"
               alt="BADDIECURVES"
-              width={56}
-              height={18}
-              className="h-5 w-auto object-contain"
-              style={{ width: 'auto', height: 'auto' }}
+              width={120}
+              height={36}
+              className="h-7 w-auto max-w-[120px] object-contain"
+              priority
             />
-            <span className="text-xs font-semibold text-gray-500 tracking-wide">ADMIN</span>
+            <span className="text-[10px] font-semibold text-gray-400 tracking-wide uppercase">Admin</span>
           </Link>
 
           <nav className="space-y-1">

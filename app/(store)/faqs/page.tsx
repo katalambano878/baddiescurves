@@ -50,7 +50,7 @@ export default function FAQsPage() {
     {
       category: 'shipping',
       question: 'Do you ship outside Ghana?',
-      answer: 'Currently, we only ship within Ghana. We\'re working on expanding to neighbouring West African countries. Sign up for our newsletter to be notified when international shipping becomes available.'
+      answer: 'Yes. Ghana customers check out in GH₵ (Mobile Money). International customers enter a full shipping address, see USD prices, and pay with PayPal. Shipping rates vary by country and are shown at checkout.'
     },
     {
       category: 'shipping',

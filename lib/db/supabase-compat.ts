@@ -664,6 +664,24 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any; count: number
         const edge = this.findReverseEdge(embedTable);
         const fkCol = edge?.column ?? `${singularize(this.table)}_id`;
         const parentIds = Array.from(new Set(rows.map((r) => r.id).filter(Boolean)));
+
+        if (isCountAggregate(embed.select)) {
+          const counts = new Map<any, number>();
+          if (parentIds.length) {
+            const ph = parentIds.map((_, i) => `$${i + 1}`).join(",");
+            const res = await pool.query(
+              `SELECT ${ident(fkCol)}, count(*)::int AS count FROM ${ident(embedTable)} WHERE ${ident(fkCol)} IN (${ph}) GROUP BY ${ident(fkCol)}`,
+              parentIds
+            );
+            for (const row of res.rows) counts.set(row[fkCol], row.count ?? 0);
+          }
+          for (const r of rows) {
+            const c = counts.get(r.id) ?? 0;
+            r[embed.alias] = [{ count: c }];
+          }
+          continue;
+        }
+
         const wantId = embedWantsId(embed.select);
         const wantFk = embed.select.star || embed.select.columns.includes(fkCol);
         const innerCols = this.embedColumns(embed.select, fkCol);
@@ -788,6 +806,15 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any; count: number
 
 function embedWantsId(parsed: ParsedSelect): boolean {
   return parsed.star || parsed.columns.includes("id");
+}
+
+function isCountAggregate(parsed: ParsedSelect): boolean {
+  return (
+    !parsed.star &&
+    parsed.embeds.length === 0 &&
+    parsed.columns.length === 1 &&
+    parsed.columns[0] === "count"
+  );
 }
 
 function singularize(table: string): string {

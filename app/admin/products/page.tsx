@@ -14,6 +14,7 @@ export default function ProductsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
 
   // Statistics
@@ -44,12 +45,22 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      setFetchError(null);
       let query = supabase
         .from('products')
         .select(`
-          *,
+          id,
+          name,
+          sku,
+          price,
+          price_ghs,
+          quantity,
+          status,
+          rating_avg,
+          metadata,
+          created_at,
           categories(name),
-          product_variants(count),
+          product_variants(id),
           product_images(url, position)
         `);
 
@@ -65,14 +76,20 @@ export default function ProductsPage() {
       if (error) throw error;
 
       if (data) {
+        const categoryName = (p: any) => {
+          const cat = p.categories;
+          if (Array.isArray(cat)) return cat[0]?.name || 'Uncategorized';
+          return cat?.name || 'Uncategorized';
+        };
+
         // Transform data for UI
         const transformedProducts = data.map((p: any) => ({
           ...p,
-          category: p.categories?.name || 'Uncategorized',
+          category: categoryName(p),
           image: p.product_images?.find((img: any) => img.position === 0)?.url
             || p.product_images?.[0]?.url
             || 'https://via.placeholder.com/300?text=No+Image',
-          variantsCount: p.product_variants?.[0]?.count || 0,
+          variantsCount: Array.isArray(p.product_variants) ? p.product_variants.length : 0,
           stock: p.quantity,
           sales: 0, // Placeholder for now
           rating: p.rating_avg || 0
@@ -88,8 +105,9 @@ export default function ProductsPage() {
           active: transformedProducts.filter(p => p.status === 'active').length
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching products:', error);
+      setFetchError(error?.message || 'Failed to load products');
     } finally {
       setLoading(false);
     }
@@ -295,7 +313,20 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {loading ? (
+        {fetchError ? (
+          <div className="p-12 text-center">
+            <i className="ri-error-warning-line text-4xl mb-4 text-red-500 inline-block"></i>
+            <p className="text-lg text-gray-900 font-semibold">Could not load products</p>
+            <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">{fetchError}</p>
+            <button
+              type="button"
+              onClick={fetchProducts}
+              className="mt-4 px-4 py-2 bg-blue-700 text-white rounded-lg text-sm font-semibold"
+            >
+              Retry
+            </button>
+          </div>
+        ) : loading ? (
           <div className="p-12 text-center text-gray-500">
             <i className="ri-loader-4-line animate-spin text-3xl mb-2 inline-block"></i>
             <p>Loading products...</p>
@@ -354,7 +385,7 @@ export default function ProductsPage() {
                     </td>
                     <td className="py-4 px-4 text-gray-700 text-sm font-mono">{product.sku || '-'}</td>
                     <td className="py-4 px-4 text-gray-700 text-sm">{product.category}</td>
-                    <td className="py-4 px-4 font-semibold text-gray-900 whitespace-nowrap">GH₵ {money(product.price)}</td>
+                    <td className="py-4 px-4 font-semibold text-gray-900 whitespace-nowrap">${money(product.price)}</td>
                     <td className="py-4 px-4 text-gray-700">
                       {product.stock}
                       {product.stock <= (product.metadata?.low_stock_threshold || 5) && product.stock > 0 && (
@@ -411,7 +442,7 @@ export default function ProductsPage() {
                 <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{product.name}</h3>
                 <p className="text-sm text-gray-600 mb-2">{product.category}</p>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-lg font-bold text-gray-900">GH₵ {product.price}</p>
+                  <p className="text-lg font-bold text-gray-900">${money(product.price)}</p>
                 </div>
                 <div className="flex items-center justify-between text-sm text-gray-600 mb-3 pb-3 border-b border-gray-200">
                   <span>Stock: {product.stock}</span>

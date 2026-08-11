@@ -557,7 +557,13 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                     {activeTab === 'pricing' && (
                         <div className="space-y-6 max-w-3xl">
                             <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mb-2">
-                                <p className="text-amber-900 text-sm"><strong>USD</strong> is the base currency shown to international customers. <strong>Ghana price</strong> is shown only to visitors from Ghana.</p>
+                                <p className="text-amber-900 text-sm">
+                                  Set <strong>two prices</strong> — they are never auto-converted at checkout.
+                                  <br />
+                                  <strong>USD</strong> → international customers (PayPal).{' '}
+                                  <strong>Ghana (GH₵)</strong> → Ghana visitors (Mobile Money).
+                                  Fill both so shop and online stay aligned.
+                                </p>
                             </div>
 
                             <div className="grid md:grid-cols-2 gap-6">
@@ -613,7 +619,9 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                             placeholder="0.00"
                                         />
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">Shown to visitors from Ghana. Leave empty to auto-convert from USD.</p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Required for Ghana customers. If empty, Ghana storefront will fall back to a rough USD×rate — set this explicitly for best control.
+                                    </p>
                                 </div>
 
                                 <div>

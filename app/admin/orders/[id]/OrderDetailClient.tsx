@@ -303,7 +303,19 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <p className="font-bold text-lg">{customerName}</p>
               <p>{shippingAddress.phone || order?.phone}</p>
               <p>{shippingAddress.address || shippingAddress.address_line1}</p>
-              <p>{shippingAddress.city}{(shippingAddress.region || shippingAddress.state) && `, ${shippingAddress.region || shippingAddress.state}`}</p>
+              <p>
+                {[
+                  shippingAddress.city,
+                  shippingAddress.state || shippingAddress.region,
+                  shippingAddress.postalCode || shippingAddress.postal_code,
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
+              </p>
+              {shippingAddress.country && <p>{shippingAddress.country}</p>}
+              {shippingAddress.deliveryNote && (
+                <p className="text-sm mt-1">Note: {shippingAddress.deliveryNote}</p>
+              )}
             </div>
           </div>
 
@@ -539,13 +551,24 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <div className="text-gray-700 space-y-1">
                 {/* Support both old field names (address_line1) and new (address) */}
                 <p>{shippingAddress.address || shippingAddress.address_line1}</p>
-                {(shippingAddress.address_line2) && <p>{shippingAddress.address_line2}</p>}
+                {shippingAddress.address_line2 && <p>{shippingAddress.address_line2}</p>}
                 <p>
-                  {shippingAddress.city}
-                  {(shippingAddress.region || shippingAddress.state) && `, ${shippingAddress.region || shippingAddress.state}`}
+                  {[
+                    shippingAddress.city,
+                    shippingAddress.state || shippingAddress.region,
+                    shippingAddress.postalCode || shippingAddress.postal_code,
+                  ]
+                    .filter(Boolean)
+                    .join(', ')}
                 </p>
-                {shippingAddress.postal_code && <p>{shippingAddress.postal_code}</p>}
-                {shippingAddress.country && <p className="font-semibold">{shippingAddress.country}</p>}
+                {shippingAddress.country && (
+                  <p className="font-semibold">{shippingAddress.country}</p>
+                )}
+                {shippingAddress.deliveryNote && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Delivery note: {shippingAddress.deliveryNote}
+                  </p>
+                )}
               </div>
             </div>
 

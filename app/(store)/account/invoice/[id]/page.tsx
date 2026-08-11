@@ -125,8 +125,18 @@ function InvoiceContent() {
               <p className="font-semibold mb-1">Ship to</p>
               <p>{shipping.address || shipping.address_line1 || '—'}</p>
               <p>
-                {[shipping.city, shipping.region || shipping.state].filter(Boolean).join(', ')}
+                {[
+                  shipping.city,
+                  shipping.state || shipping.region,
+                  shipping.postalCode || shipping.postal_code,
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
               </p>
+              {shipping.country ? <p>{shipping.country}</p> : null}
+              {shipping.deliveryNote ? (
+                <p className="text-gray-600 mt-1">Note: {shipping.deliveryNote}</p>
+              ) : null}
             </div>
           </div>
 

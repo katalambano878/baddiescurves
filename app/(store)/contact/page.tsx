@@ -101,7 +101,7 @@ export default function ContactPage() {
     },
     {
       question: 'Do you offer international shipping?',
-      answer: 'At the moment, we focus on customers within Ghana. If we open up international shipping in the future, we will announce it on our social media channels.'
+      answer: 'Yes. Shoppers outside Ghana can checkout in USD with PayPal and enter a full international shipping address. Rates are shown at checkout by country/region.'
     },
     {
       question: 'What payment methods do you accept?',

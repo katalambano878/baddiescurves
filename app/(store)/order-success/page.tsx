@@ -288,9 +288,24 @@ function OrderSuccessContent() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Address</p>
-                      <p className="text-gray-900">{order.shipping_address.address}</p>
-                      <p className="text-gray-900">{order.shipping_address.city}, {order.shipping_address.region}</p>
-                      <p className="text-gray-900">{order.shipping_address.postalCode}</p>
+                      <p className="text-gray-900">{order.shipping_address.address || order.shipping_address.address_line1}</p>
+                      <p className="text-gray-900">
+                        {[
+                          order.shipping_address.city,
+                          order.shipping_address.state || order.shipping_address.region,
+                          order.shipping_address.postalCode || order.shipping_address.postal_code,
+                        ]
+                          .filter(Boolean)
+                          .join(', ')}
+                      </p>
+                      {order.shipping_address.country && (
+                        <p className="text-gray-900 font-medium">{order.shipping_address.country}</p>
+                      )}
+                      {order.shipping_address.deliveryNote && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          Note: {order.shipping_address.deliveryNote}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Phone</p>

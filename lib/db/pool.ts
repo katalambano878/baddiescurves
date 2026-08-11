@@ -38,11 +38,38 @@ export function getPool(): Pool {
     connectionString,
     max: Number(process.env.PG_POOL_MAX || 10),
     idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS || 10_000),
     // Self-hosted Postgres on the same host / private network: TLS optional.
     ssl:
       process.env.PGSSL === "require"
         ? { rejectUnauthorized: false }
         : undefined,
+  });
+  _pool.on("connect", (client) => {
+    const statementTimeout = Math.max(
+      0,
+      Math.min(120_000, Math.floor(Number(process.env.PG_STATEMENT_TIMEOUT_MS || 30_000) || 0))
+    );
+    const lockTimeout = Math.max(
+      0,
+      Math.min(60_000, Math.floor(Number(process.env.PG_LOCK_TIMEOUT_MS || 10_000) || 0))
+    );
+    const idleTxTimeout = Math.max(
+      0,
+      Math.min(
+        300_000,
+        Math.floor(Number(process.env.PG_IDLE_IN_TX_TIMEOUT_MS || 30_000) || 0)
+      )
+    );
+    const statements: string[] = [];
+    if (statementTimeout > 0) statements.push(`SET statement_timeout = ${statementTimeout}`);
+    if (lockTimeout > 0) statements.push(`SET lock_timeout = ${lockTimeout}`);
+    if (idleTxTimeout > 0) {
+      statements.push(`SET idle_in_transaction_session_timeout = ${idleTxTimeout}`);
+    }
+    if (statements.length) {
+      client.query(statements.join("; ")).catch(() => {});
+    }
   });
   return _pool;
 }

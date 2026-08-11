@@ -1,7 +1,68 @@
+import { createHash } from 'crypto';
 import { money } from '@/lib/format-money';
 import { Resend } from 'resend';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { escapeHtml } from '@/lib/sanitize';
+
+async function claimNotificationEvent(opts: {
+    channel: 'sms' | 'email';
+    eventType: string;
+    orderNumber?: string | null;
+    recipient?: string | null;
+}): Promise<boolean> {
+    const orderPart = opts.orderNumber || 'none';
+    const recipientFp = opts.recipient
+        ? createHash('sha256').update(String(opts.recipient).toLowerCase()).digest('hex').slice(0, 24)
+        : 'none';
+    const idempotencyKey = `${opts.channel}:${opts.eventType}:${orderPart}:${recipientFp}`;
+    const { error } = await supabaseAdmin.from('notification_events').insert({
+        channel: opts.channel,
+        event_type: opts.eventType,
+        related_order_number: opts.orderNumber || null,
+        recipient_fingerprint: recipientFp,
+        idempotency_key: idempotencyKey,
+        status: 'pending',
+        attempt_count: 1,
+    });
+    if (error) {
+        const msg = String(error.message || '');
+        if (/duplicate|unique/i.test(msg)) return false;
+        // Table may not exist on older DBs — fail open
+        if (/does not exist|relation/i.test(msg)) return true;
+        console.warn('[Notification] idempotency insert failed:', msg);
+        return true;
+    }
+    return true;
+}
+
+async function markNotificationSent(idempotencyLike: {
+    channel: 'sms' | 'email';
+    eventType: string;
+    orderNumber?: string | null;
+    recipient?: string | null;
+    providerMessageId?: string | null;
+    failed?: boolean;
+    error?: string | null;
+}) {
+    const orderPart = idempotencyLike.orderNumber || 'none';
+    const recipientFp = idempotencyLike.recipient
+        ? createHash('sha256').update(String(idempotencyLike.recipient).toLowerCase()).digest('hex').slice(0, 24)
+        : 'none';
+    const idempotencyKey = `${idempotencyLike.channel}:${idempotencyLike.eventType}:${orderPart}:${recipientFp}`;
+    try {
+        await supabaseAdmin
+            .from('notification_events')
+            .update({
+                status: idempotencyLike.failed ? 'failed' : 'sent',
+                sent_at: new Date().toISOString(),
+                provider_message_id: idempotencyLike.providerMessageId || null,
+                last_error: idempotencyLike.error || null,
+            })
+            .eq('idempotency_key', idempotencyKey);
+    } catch {
+        // non-fatal
+    }
+}
 
 const resend = new Resend(process.env.RESEND_API_KEY || 'missing_api_key');
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'baddiecurves@gmail.com';
@@ -145,23 +206,31 @@ export async function sendSMS({ to, message }: { to: string; message: string }) 
 
     try {
         console.log(`[SMS] Sending to ${maskPhone(recipient)}`);
-        const response = await fetch('https://api.moolre.com/open/sms/send', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-API-VASKEY': smsVasKey
-            },
-            body: JSON.stringify({
-                type: 1,
-                senderid: 'STORE',
-                messages: [
-                    {
-                        recipient: recipient,
-                        message: message
-                    }
-                ]
-            })
-        });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 12_000);
+        let response: Response;
+        try {
+            response = await fetch('https://api.moolre.com/open/sms/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-VASKEY': smsVasKey
+                },
+                body: JSON.stringify({
+                    type: 1,
+                    senderid: process.env.MOOLRE_SMS_SENDER_ID || 'STORE',
+                    messages: [
+                        {
+                            recipient: recipient,
+                            message: message
+                        }
+                    ]
+                }),
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timer);
+        }
 
         const contentType = response.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
@@ -218,7 +287,7 @@ export async function sendOrderConfirmation(order: any) {
     // Fetch order items to get preorder_shipping info
     let shippingNotes: string[] = [];
     try {
-        const { data: items } = await supabase
+        const { data: items } = await supabaseAdmin
             .from('order_items')
             .select('product_name, metadata')
             .eq('order_id', id);
@@ -262,11 +331,26 @@ ${emailButton('Track Your Order', trackingUrl)}
 <p style="color:#9ca3af;font-size:12px;text-align:center;margin:0;">Or copy this link: <a href="${trackingUrl}" style="color:${BRAND.color};">${trackingUrl}</a></p>
 `, `Your order #${order_number || id} is confirmed!`);
 
-    await sendEmail({
-        to: email,
-        subject: `Order Confirmed! #${order_number || id}`,
-        html: customerEmailHtml
-    });
+    if (await claimNotificationEvent({
+        channel: 'email',
+        eventType: 'order_confirmation_customer',
+        orderNumber: order_number,
+        recipient: email,
+    })) {
+        await sendEmail({
+            to: email,
+            subject: `Order Confirmed! #${order_number || id}`,
+            html: customerEmailHtml
+        });
+        await markNotificationSent({
+            channel: 'email',
+            eventType: 'order_confirmation_customer',
+            orderNumber: order_number,
+            recipient: email,
+        });
+    } else {
+        console.log('[Notification] Skipping duplicate customer email for', order_number);
+    }
 
     // 2. Email to Admin
     const adminEmailHtml = emailLayout(`
@@ -285,11 +369,24 @@ ${emailShippingNotes(shippingNotes)}
 ${emailButton('View Order in Admin', `${baseUrl}/admin/orders/${id}`)}
 `, `New order #${order_number} from ${name}`);
 
-    await sendEmail({
-        to: ADMIN_EMAIL,
-        subject: `New Order #${order_number || id}`,
-        html: adminEmailHtml
-    });
+    if (await claimNotificationEvent({
+        channel: 'email',
+        eventType: 'order_confirmation_admin',
+        orderNumber: order_number,
+        recipient: ADMIN_EMAIL,
+    })) {
+        await sendEmail({
+            to: ADMIN_EMAIL,
+            subject: `New Order #${order_number || id}`,
+            html: adminEmailHtml
+        });
+        await markNotificationSent({
+            channel: 'email',
+            eventType: 'order_confirmation_admin',
+            orderNumber: order_number,
+            recipient: ADMIN_EMAIL,
+        });
+    }
 
     // 3. SMS to Customer (if phone exists)
     if (phone) {
@@ -297,10 +394,28 @@ ${emailButton('View Order in Admin', `${baseUrl}/admin/orders/${id}`)}
             ? `Hi ${name}, your order #${order_number || id} is confirmed! Tracking: ${trackingNumber}. Track here: ${trackingUrl}${shippingNotesSms}`
             : `Hi ${name}, your order #${order_number || id} at our store is confirmed! Track here: ${trackingUrl}${shippingNotesSms}`;
 
-        await sendSMS({
-            to: phone,
-            message: smsMessage
-        });
+        if (await claimNotificationEvent({
+            channel: 'sms',
+            eventType: 'order_confirmation',
+            orderNumber: order_number,
+            recipient: phone,
+        })) {
+            const smsResult = await sendSMS({
+                to: phone,
+                message: smsMessage
+            });
+            await markNotificationSent({
+                channel: 'sms',
+                eventType: 'order_confirmation',
+                orderNumber: order_number,
+                recipient: phone,
+                providerMessageId: smsResult?.data?.messageid || smsResult?.messageid || null,
+                failed: smsResult?.status !== 1,
+                error: smsResult?.status === 1 ? null : String(smsResult?.message || 'sms_failed'),
+            });
+        } else {
+            console.log('[Notification] Skipping duplicate SMS for', order_number);
+        }
     }
 }
 

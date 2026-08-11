@@ -40,6 +40,7 @@
     "supabase:push": "supabase db push",
     "supabase:migrate": "supabase link --project-ref xjvfriognajusceztocl && supabase db push",
     "db:migrate": "node scripts/run-migration.mjs",
+    "db:schema-test": "echo Run scripts/db-schema-test.sql against staging via psql",
     "create-admin": "node scripts/create-admin-user.mjs",
     "start": "next start -H 0.0.0.0 -p 3000"
   },

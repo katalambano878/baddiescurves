@@ -96,6 +96,16 @@ export async function middleware(request: NextRequest) {
     });
   }
 
+  // Payment/SMS callbacks and health checks must never hit admin auth redirects
+  if (
+    pathname.startsWith('/api/payment/') ||
+    pathname.startsWith('/api/health') ||
+    pathname.startsWith('/api/cron/')
+  ) {
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  }
+
   if (pathname.startsWith('/admin')) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');

@@ -4,6 +4,11 @@ import {
   applyPostgrestParams,
 } from "@/lib/db/supabase-compat";
 import { isPlainPostgres } from "@/lib/db/mode";
+import {
+  applyForcedFilters,
+  authorizeRestAccess,
+  resolveRestActor,
+} from "@/lib/db/rest-acl";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -55,9 +60,21 @@ export async function GET(
   const { table } = await ctx.params;
   if (!PG_IDENT.test(table)) return jsonError("Invalid table");
 
+  const actor = await resolveRestActor(req);
+  const decision = authorizeRestAccess({
+    actor,
+    table,
+    method: "GET",
+    params: req.nextUrl.searchParams,
+  });
+  if (!decision.allow) {
+    return jsonError(decision.message, decision.status);
+  }
+
+  const params = applyForcedFilters(req.nextUrl.searchParams, decision.forcedFilters);
   const client = createClient();
   const qb = client.from(table);
-  const select = req.nextUrl.searchParams.get("select") || "*";
+  const select = params.get("select") || req.nextUrl.searchParams.get("select") || "*";
   if (preferCount(req)) {
     qb.select(select, {
       count: "exact",
@@ -66,10 +83,9 @@ export async function GET(
   } else {
     qb.select(select);
   }
-  // Apply filters/order/limit without re-applying select
-  const params = new URLSearchParams(req.nextUrl.searchParams);
-  params.delete("select");
-  applyPostgrestParams(qb as any, params, {
+  const filtered = new URLSearchParams(params);
+  filtered.delete("select");
+  applyPostgrestParams(qb as any, filtered, {
     preferSingle: preferSingle(req),
   });
 
@@ -81,7 +97,10 @@ export async function GET(
   const headers = new Headers(corsHeaders());
   headers.set("Content-Type", "application/json");
   if (result.count != null) {
-    headers.set("Content-Range", `0-${Math.max((Array.isArray(result.data) ? result.data.length : 1) - 1, 0)}/${result.count}`);
+    headers.set(
+      "Content-Range",
+      `0-${Math.max((Array.isArray(result.data) ? result.data.length : 1) - 1, 0)}/${result.count}`
+    );
   }
 
   if (preferSingle(req)) {
@@ -102,6 +121,18 @@ export async function POST(
 
   const body = await req.json().catch(() => null);
   if (body == null) return jsonError("Invalid JSON body");
+
+  const actor = await resolveRestActor(req);
+  const decision = authorizeRestAccess({
+    actor,
+    table,
+    method: "POST",
+    params: req.nextUrl.searchParams,
+    body,
+  });
+  if (!decision.allow) {
+    return jsonError(decision.message, decision.status);
+  }
 
   const client = createClient();
   let qb = client.from(table).insert(body);
@@ -132,9 +163,22 @@ export async function PATCH(
   const body = await req.json().catch(() => null);
   if (body == null || typeof body !== "object") return jsonError("Invalid JSON body");
 
+  const actor = await resolveRestActor(req);
+  const decision = authorizeRestAccess({
+    actor,
+    table,
+    method: "PATCH",
+    params: req.nextUrl.searchParams,
+    body,
+  });
+  if (!decision.allow) {
+    return jsonError(decision.message, decision.status);
+  }
+
+  const params = applyForcedFilters(req.nextUrl.searchParams, decision.forcedFilters);
   const client = createClient();
   let qb = client.from(table).update(body);
-  applyPostgrestParams(qb as any, req.nextUrl.searchParams);
+  applyPostgrestParams(qb as any, params);
   if (preferReturn(req) || preferSingle(req)) {
     qb = qb.select("*") as typeof qb;
   }
@@ -155,6 +199,17 @@ export async function DELETE(
   }
   const { table } = await ctx.params;
   if (!PG_IDENT.test(table)) return jsonError("Invalid table");
+
+  const actor = await resolveRestActor(req);
+  const decision = authorizeRestAccess({
+    actor,
+    table,
+    method: "DELETE",
+    params: req.nextUrl.searchParams,
+  });
+  if (!decision.allow) {
+    return jsonError(decision.message, decision.status);
+  }
 
   const client = createClient();
   let qb = client.from(table).delete();

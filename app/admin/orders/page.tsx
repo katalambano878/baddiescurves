@@ -67,8 +67,8 @@ export default function AdminOrdersPage() {
     try {
       setLoading(true);
 
-      // Fetch orders with related data
-      const { data: ordersData, error } = await supabase
+      // Bounded fetch — never pull an unbounded table into the browser
+      const query = supabase
         .from('orders')
         .select(`
           id,
@@ -88,7 +88,16 @@ export default function AdminOrdersPage() {
             product_name
           )
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
+
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Orders query timed out')), 15_000)
+      );
+      const { data: ordersData, error } = await Promise.race([
+        Promise.resolve(query),
+        timeout,
+      ]);
 
       if (error) throw error;
 
@@ -123,6 +132,7 @@ export default function AdminOrdersPage() {
 
     } catch (error) {
       console.error('Error fetching orders:', error);
+      setOrders([]);
     } finally {
       setLoading(false);
     }

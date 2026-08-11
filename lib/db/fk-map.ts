@@ -24,6 +24,8 @@ export const JSONB_COLUMNS: Record<string, Set<string>> = {
   "support_tickets": new Set(["metadata"]),
 };
 
+// payment_events / notification_events intentionally have no jsonb columns.
+
 export const FK_MAP: Record<string, FkEdge[]> = {
   "cart_items": [
     { column: "product_id", foreignTable: "products", foreignColumn: "id" },

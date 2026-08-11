@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
+import { setAuthCookies } from '@/lib/auth-cookies';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -38,12 +39,9 @@ export default function AdminLoginPage() {
       if (error) throw error;
 
       if (data.session) {
-        // Set auth cookie so middleware can verify the session server-side
-        document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax; Secure`;
-        document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax; Secure`;
-
-        router.push('/admin');
-        router.refresh();
+        // Cookie must work on http (staging/local) and https — Secure only when HTTPS
+        setAuthCookies(data.session.access_token, data.session.refresh_token);
+        router.replace('/admin');
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');

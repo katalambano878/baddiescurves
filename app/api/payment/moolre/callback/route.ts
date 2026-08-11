@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendOrderConfirmation } from '@/lib/notifications';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
+import { claimPaymentEvent, completePaymentEvent } from '@/lib/db/payment-events';
 
 /**
  * Moolre Callback Payload Structure (from their actual API):
@@ -153,6 +154,28 @@ export async function POST(req: Request) {
         if (isSuccess) {
             console.log(`[Callback] Payment SUCCESS for Order ${merchantOrderRef}`);
 
+            const rawAmount = data.amount ?? data.value ?? body.amount;
+            const callbackAmount =
+                rawAmount != null && rawAmount !== ''
+                    ? parseFloat(String(rawAmount))
+                    : NaN;
+
+            const eventKey = `moolre:${merchantOrderRef}:${moolreReference}`;
+            const claimed = await claimPaymentEvent({
+                gateway: 'moolre',
+                eventKey,
+                orderNumber: merchantOrderRef,
+                gatewayReference: String(moolreReference),
+                eventType: 'callback_success',
+                payload: { code: body.code, status: body.status, txtstatus: txStatus },
+                amount: Number.isNaN(callbackAmount) ? null : callbackAmount,
+                currency: 'GHS',
+            });
+            if (!claimed) {
+                console.log('[Callback] Duplicate/in-flight event ignored:', eventKey);
+                return NextResponse.json({ success: true, message: 'Event already processed' });
+            }
+
             // Check if order exists
             const { data: existingOrder, error: fetchError } = await supabaseAdmin
                 .from('orders')
@@ -162,12 +185,19 @@ export async function POST(req: Request) {
 
             if (fetchError || !existingOrder) {
                 console.error('[Callback] Order not found:', merchantOrderRef);
+                await completePaymentEvent({
+                    gateway: 'moolre',
+                    eventKey,
+                    status: 'failed',
+                    error: 'Order not found',
+                });
                 return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
             }
 
             // Already paid - idempotent
             if (existingOrder.payment_status === 'paid') {
                 console.log('[Callback] Order already paid, skipping:', merchantOrderRef);
+                await completePaymentEvent({ gateway: 'moolre', eventKey, status: 'processed' });
                 return NextResponse.json({ success: true, message: 'Order already processed' });
             }
 
@@ -175,14 +205,14 @@ export async function POST(req: Request) {
             // SECURITY: Verify amount matches — REJECT if missing or mismatch
             // Moolre sends amount/value inside body.data
             // ============================================================
-            const rawAmount = data.amount ?? data.value ?? body.amount;
-            const callbackAmount =
-                rawAmount != null && rawAmount !== ''
-                    ? parseFloat(String(rawAmount))
-                    : NaN;
-
             if (Number.isNaN(callbackAmount)) {
                 console.error('[Callback] Missing payment amount for order:', merchantOrderRef);
+                await completePaymentEvent({
+                    gateway: 'moolre',
+                    eventKey,
+                    status: 'failed',
+                    error: 'Missing payment amount',
+                });
                 return NextResponse.json({
                     success: false,
                     message: 'Missing payment amount'
@@ -192,6 +222,12 @@ export async function POST(req: Request) {
             const expectedAmount = Number(existingOrder.total);
             if (Math.abs(callbackAmount - expectedAmount) > 0.01) {
                 console.error('[Callback] AMOUNT MISMATCH — REJECTING! Expected:', expectedAmount, 'Got:', callbackAmount, 'Order:', merchantOrderRef);
+                await completePaymentEvent({
+                    gateway: 'moolre',
+                    eventKey,
+                    status: 'failed',
+                    error: 'Amount mismatch',
+                });
                 return NextResponse.json({
                     success: false,
                     message: 'Payment amount does not match order total'
@@ -207,11 +243,23 @@ export async function POST(req: Request) {
 
             if (updateError) {
                 console.error('[Callback] RPC Error:', updateError.message);
+                await completePaymentEvent({
+                    gateway: 'moolre',
+                    eventKey,
+                    status: 'failed',
+                    error: updateError.message,
+                });
                 return NextResponse.json({ success: false, message: 'Database update failed' }, { status: 500 });
             }
 
             if (!orderJson) {
                 console.error('[Callback] Order not found after RPC:', merchantOrderRef);
+                await completePaymentEvent({
+                    gateway: 'moolre',
+                    eventKey,
+                    status: 'failed',
+                    error: 'Order not found after RPC',
+                });
                 return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
             }
 
@@ -229,14 +277,12 @@ export async function POST(req: Request) {
                 console.error('[Callback] Customer stats failed:', statsError.message);
             }
 
-            // Send SMS + Email notifications
-            try {
-                console.log('[Callback] Sending notifications for:', orderJson.order_number);
-                await sendOrderConfirmation(orderJson);
-                console.log('[Callback] Notifications sent!');
-            } catch (notifyError: any) {
-                console.error('[Callback] Notification failed:', notifyError.message);
-            }
+            await completePaymentEvent({ gateway: 'moolre', eventKey, status: 'processed' });
+
+            // Do not block callback acknowledgement on SMS/email
+            void sendOrderConfirmation(orderJson).catch((notifyError: any) => {
+                console.error('[Callback] Notification failed:', notifyError?.message);
+            });
 
             return NextResponse.json({ success: true, message: 'Payment verified and Order Updated' });
 

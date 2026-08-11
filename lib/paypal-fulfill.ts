@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendOrderConfirmation } from '@/lib/notifications';
 import { extractCaptureInfo, isPayPalPaymentCompleted } from '@/lib/paypal';
+import { claimPaymentEvent, completePaymentEvent } from '@/lib/db/payment-events';
 
 /**
  * Mark an order paid from a captured/completed PayPal order object.
@@ -47,6 +48,27 @@ export async function fulfillPayPalOrder(opts: {
     };
   }
 
+  const captureRef = info.captureId || opts.paypalOrder.id || 'paypal-capture';
+  const eventKey = `paypal:${opts.orderNumber}:${captureRef}`;
+  const claimed = await claimPaymentEvent({
+    gateway: 'paypal',
+    eventKey,
+    orderNumber: opts.orderNumber,
+    gatewayReference: String(captureRef),
+    eventType: 'capture',
+    payload: { status: info.status, captureId: info.captureId },
+    amount: info.amount ?? null,
+    currency: info.currency || order.currency || 'USD',
+  });
+  if (!claimed) {
+    return {
+      success: true,
+      alreadyPaid: true,
+      message: 'PayPal event already processed',
+      order,
+    };
+  }
+
   if (info.amount != null && Math.abs(info.amount - Number(order.total)) > 0.01) {
     console.error(
       '[PayPal] Amount mismatch — expected',
@@ -56,6 +78,12 @@ export async function fulfillPayPalOrder(opts: {
       'order',
       opts.orderNumber
     );
+    await completePaymentEvent({
+      gateway: 'paypal',
+      eventKey,
+      status: 'failed',
+      error: 'Amount mismatch',
+    });
     return { success: false, message: 'Payment amount does not match order total' };
   }
 
@@ -69,10 +97,14 @@ export async function fulfillPayPalOrder(opts: {
       'order',
       opts.orderNumber
     );
+    await completePaymentEvent({
+      gateway: 'paypal',
+      eventKey,
+      status: 'failed',
+      error: 'Currency mismatch',
+    });
     return { success: false, message: 'Payment currency does not match order' };
   }
-
-  const captureRef = info.captureId || opts.paypalOrder.id || 'paypal-capture';
 
   const { data: orderJson, error: updateError } = await supabaseAdmin.rpc('mark_order_paid', {
     order_ref: opts.orderNumber,
@@ -81,6 +113,12 @@ export async function fulfillPayPalOrder(opts: {
 
   if (updateError) {
     console.error('[PayPal] mark_order_paid error:', updateError.message);
+    await completePaymentEvent({
+      gateway: 'paypal',
+      eventKey,
+      status: 'failed',
+      error: updateError.message,
+    });
     return { success: false, message: 'Failed to update order' };
   }
 
@@ -118,12 +156,12 @@ export async function fulfillPayPalOrder(opts: {
     }
   }
 
+  await completePaymentEvent({ gateway: 'paypal', eventKey, status: 'processed' });
+
   if (orderJson) {
-    try {
-      await sendOrderConfirmation(orderJson);
-    } catch (notifyError: any) {
-      console.error('[PayPal] Notification failed:', notifyError.message);
-    }
+    void sendOrderConfirmation(orderJson).catch((notifyError: any) => {
+      console.error('[PayPal] Notification failed:', notifyError?.message);
+    });
   }
 
   return {

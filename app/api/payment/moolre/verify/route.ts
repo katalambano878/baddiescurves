@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendOrderConfirmation } from '@/lib/notifications';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
+import { claimPaymentEvent, completePaymentEvent } from '@/lib/db/payment-events';
 
 /**
  * Payment verification endpoint.
@@ -179,6 +180,26 @@ export async function POST(req: Request) {
             verifiedResult.data?.thirdpartyref ||
             'moolre-api-verify';
 
+        const eventKey = `moolre-verify:${orderNumber}:${moolreRef}`;
+        const claimed = await claimPaymentEvent({
+            gateway: 'moolre',
+            eventKey,
+            orderNumber,
+            gatewayReference: String(moolreRef),
+            eventType: 'verify',
+            payload: { code: verifiedResult.code, status: verifiedResult.status },
+            amount: Number(order.total),
+            currency: 'GHS',
+        });
+        if (!claimed) {
+            return NextResponse.json({
+                success: true,
+                status: 'processing',
+                payment_status: 'paid',
+                message: 'Payment already verified',
+            });
+        }
+
         console.log('[Verify] Marking order paid via moolre-api for:', orderNumber);
 
         const { data: orderJson, error: updateError } = await supabaseAdmin
@@ -189,6 +210,12 @@ export async function POST(req: Request) {
 
         if (updateError) {
             console.error('[Verify] RPC Error:', updateError.message);
+            await completePaymentEvent({
+                gateway: 'moolre',
+                eventKey,
+                status: 'failed',
+                error: updateError.message,
+            });
             return NextResponse.json({ success: false, message: 'Failed to update order' }, { status: 500 });
         }
 
@@ -205,13 +232,12 @@ export async function POST(req: Request) {
             }
         }
 
+        await completePaymentEvent({ gateway: 'moolre', eventKey, status: 'processed' });
+
         if (orderJson) {
-            try {
-                await sendOrderConfirmation(orderJson);
-                console.log('[Verify] Notifications sent for:', orderNumber);
-            } catch (notifyError: any) {
-                console.error('[Verify] Notification failed:', notifyError.message);
-            }
+            void sendOrderConfirmation(orderJson).catch((notifyError: any) => {
+                console.error('[Verify] Notification failed:', notifyError?.message);
+            });
         }
 
         return NextResponse.json({

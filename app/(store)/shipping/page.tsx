@@ -7,35 +7,29 @@ export default function ShippingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl font-bold text-gray-900 mb-6">Shipping Policy</h1>
-            <p className="text-xl text-gray-600 leading-relaxed">
-              How it works — processing times, USA & international delivery for BADDIECURVES.
-            </p>
+            <p className="text-xl text-gray-600 leading-relaxed">How It Works</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="prose prose-lg max-w-none space-y-10">
-          <section>
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">How It Works</h2>
-            <p className="text-gray-600 leading-relaxed mb-4">
-              All orders take <strong className="text-gray-900">3 days to 1 week</strong> to process.
+          <section className="text-center max-w-2xl mx-auto space-y-6">
+            <h2 className="text-3xl font-bold text-gray-900">How It Works</h2>
+            <p className="text-gray-700 leading-relaxed text-lg">
+              All Orders take 3 days to 1 week to process.
             </p>
-            <ul className="space-y-3 text-gray-600">
-              <li className="flex items-start gap-2">
-                <i className="ri-checkbox-circle-line text-blue-700 mt-1 flex-shrink-0"></i>
-                <span><strong className="text-gray-900">USA orders</strong> are delivered with USPS Priority Mail.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <i className="ri-checkbox-circle-line text-blue-700 mt-1 flex-shrink-0"></i>
-                <span><strong className="text-gray-900">International orders</strong> are typically delivered within <strong className="text-gray-900">10–15 business days</strong>, or less if you choose express shipping.</span>
-              </li>
-            </ul>
+            <p className="text-gray-700 leading-relaxed text-lg">
+              All USA orders are delivered with USPS Priority mail.
+            </p>
+            <p className="text-gray-700 leading-relaxed text-lg">
+              International orders are typically delivered within 10–15 business days, or less if
+              you choose express shipping.
+            </p>
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">Delivery Summary</h2>
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-4 max-w-2xl mx-auto">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <i className="ri-time-line text-blue-700 text-lg"></i>
@@ -67,13 +61,23 @@ export default function ShippingPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">Need Help?</h2>
-            <p className="text-gray-600 leading-relaxed mb-4">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Need Help?</h2>
+            <p className="text-gray-600 leading-relaxed mb-4 text-center max-w-2xl mx-auto">
               Questions about shipping or your order? Reach out — we&apos;re here to help.
             </p>
-            <div className="bg-[#0A0F1D] rounded-2xl p-8 text-white border border-white/10">
-              <p className="text-gray-300 mb-2"><strong className="text-white">Phone:</strong> 054 927 8135 / 059 609 3875</p>
-              <p className="text-gray-300 mb-4"><strong className="text-white">Location:</strong> East Legon, Accra</p>
+            <div className="bg-[#0A0F1D] rounded-2xl p-8 text-white border border-white/10 max-w-2xl mx-auto">
+              <p className="text-gray-300 mb-2">
+                <strong className="text-white">USA:</strong>{' '}
+                <a href="tel:+19082440377" className="hover:text-white underline-offset-2 hover:underline">
+                  908-244-0377
+                </a>
+              </p>
+              <p className="text-gray-300 mb-2">
+                <strong className="text-white">Ghana:</strong> 054 927 8135 / 059 609 3875
+              </p>
+              <p className="text-gray-300 mb-4">
+                <strong className="text-white">Location:</strong> East Legon, Accra
+              </p>
               <div className="flex flex-wrap gap-4">
                 <Link
                   href="/contact"

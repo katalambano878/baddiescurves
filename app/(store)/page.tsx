@@ -68,13 +68,14 @@ export default function Home() {
     async function fetchData() {
       try {
         // Fetch featured products directly from Supabase
+        // All products marked Featured in admin appear here (cap is high so she can add many).
         const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select('*, product_variants(*), product_images(*)')
           .eq('status', 'active')
           .eq('featured', true)
           .order('created_at', { ascending: false })
-          .limit(8);
+          .limit(48);
 
         if (productsError) {
           logSupabaseError('Failed to fetch featured products', productsError);
@@ -143,19 +144,19 @@ export default function Home() {
           },
           {
             image: '/hero2.jpeg',
-            tag: 'Athleisure & Activewear',
+            tag: 'Stay Snatched',
             heading: <>Every <br /><span className="italic font-light text-rose-200">Curve</span></>,
             subtext: 'From waist trainers to shapewear and activewear — durable, comfortable pieces that help you feel your best.',
             cta: { text: 'Shop Collection', href: '/shop' },
             cta2: { text: 'Our Story', href: '/about' },
-            position: 'object-top'
+            position: 'object-center'
           },
           {
             image: '/hero3.jpeg',
-            tag: 'BADDIECURVES',
+            tag: 'Athleisure & Activewear',
             heading: <>Confidence <br /><span className="italic font-light text-amber-200">Starts Here</span></>,
             subtext: 'Created for every woman. Waist trainers, shapewear, post-op and athleisure that support you — in style.',
-            cta: { text: 'View Offers', href: '/shop?on_sale=true' },
+            cta: { text: 'Shop Activewear', href: '/shop' },
             cta2: null,
             position: 'object-center'
           },
@@ -326,15 +327,22 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-16">
             <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl text-gray-900 mb-4">Featured Products</h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">Top picks from our latest arrivals</p>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              Hand-picked favourites — mark more as Featured in admin to show them here.
+            </p>
           </AnimatedSection>
 
           {loading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-8">
-              {[...Array(4)].map((_, i) => (
+              {[...Array(8)].map((_, i) => (
                 <ProductCardSkeleton key={i} />
               ))}
             </div>
+          ) : featuredProducts.length === 0 ? (
+            <p className="text-center text-gray-500 py-12">
+              No featured products yet. In admin, open a product and enable{' '}
+              <span className="font-semibold text-gray-700">Feature this product on homepage</span>.
+            </p>
           ) : (
             <AnimatedGrid className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
               {featuredProducts.map((product) => {

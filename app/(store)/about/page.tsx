@@ -33,7 +33,7 @@ export default function AboutPage() {
     {
       icon: 'ri-truck-line',
       title: 'Reliable Delivery',
-      description: 'USA orders ship with USPS Priority. International delivery in 10–15 business days, or faster with express shipping.'
+      description: 'Orders process in 3 days–1 week. USA ships USPS Priority Mail; international typically 10–15 business days (or faster with express).'
     }
   ];
 

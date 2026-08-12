@@ -91,13 +91,15 @@ export default function ContactPage() {
   const heroSubtitle = pageContent?.subtitle || 'Have a question or need assistance?';
   const heroContent = pageContent?.content || 'Send us a message and we\'ll get back to you.';
   const contactPhone = getSetting('contact_phone') || '054 927 8135';
+  const contactPhoneAlt = '059 609 3875';
+  const contactPhoneUsa = '908-244-0377';
   const contactAddress = getSetting('contact_address') || 'East Legon, Accra';
   const siteName = getSetting('site_name') || "BADDIECURVES";
 
   const faqs = [
     {
       question: 'What are your delivery times?',
-      answer: 'Standard delivery typically takes 2–5 business days within Ghana, depending on your location. Every order is packaged with care to protect your hair products in transit.'
+      answer: 'All orders take 3 days to 1 week to process. USA orders ship via USPS Priority Mail. International orders typically arrive within 10–15 business days, or sooner with express shipping.'
     },
     {
       question: 'Do you offer international shipping?',
@@ -105,7 +107,7 @@ export default function ContactPage() {
     },
     {
       question: 'What payment methods do you accept?',
-      answer: 'We accept mobile money (MTN, Vodafone, AirtelTigo) and credit/debit cards through our secure Moolre payment gateway.'
+      answer: 'Ghana customers can pay with mobile money (MTN, Vodafone, AirtelTigo) via Moolre. International customers pay in USD with PayPal.'
     }
   ];
 
@@ -274,19 +276,37 @@ export default function ContactPage() {
                       <p className="pt-2 font-light leading-relaxed">{contactAddress}</p>
                     </div>
                   )}
-                  {contactPhone && (
-                    <div className="flex items-start gap-4 text-gray-600">
-                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 group-hover:bg-white transition-colors duration-500">
-                        <i className="ri-phone-line text-lg text-gray-400"></i>
-                      </div>
-                      <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                        <a href={`tel:${contactPhone.replace(/\s/g, '')}`} className="font-light hover:text-black transition-colors">{contactPhone}</a>
-                        <a href={`https://wa.me/233${contactPhone.replace(/\D/g, '').replace(/^0/, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
-                          <i className="ri-whatsapp-fill mr-1.5 text-sm"></i> WhatsApp Us
-                        </a>
-                      </div>
+                  <div className="flex items-start gap-4 text-gray-600">
+                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 group-hover:bg-white transition-colors duration-500">
+                      <i className="ri-phone-line text-lg text-gray-400"></i>
                     </div>
-                  )}
+                    <div className="pt-2 space-y-2">
+                      <p className="font-light">
+                        <span className="font-medium text-gray-900">USA:</span>{' '}
+                        <a href={`tel:+1${contactPhoneUsa.replace(/\D/g, '')}`} className="hover:text-black transition-colors underline-offset-2 hover:underline">
+                          {contactPhoneUsa}
+                        </a>
+                      </p>
+                      <p className="font-light">
+                        <span className="font-medium text-gray-900">Ghana:</span>{' '}
+                        <a href={`tel:${contactPhone.replace(/\s/g, '')}`} className="hover:text-black transition-colors">
+                          {contactPhone}
+                        </a>
+                        {' / '}
+                        <a href={`tel:${contactPhoneAlt.replace(/\s/g, '')}`} className="hover:text-black transition-colors">
+                          {contactPhoneAlt}
+                        </a>
+                      </p>
+                      <a
+                        href={`https://wa.me/233${contactPhone.replace(/\D/g, '').replace(/^0/, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                      >
+                        <i className="ri-whatsapp-fill mr-1.5 text-sm"></i> WhatsApp Us
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

@@ -66,9 +66,9 @@ const categories = [
     articles: [
       { id: 21, title: 'When will items be back in stock?', views: 1987 },
       { id: 22, title: 'How do I use the size guide?', views: 876 },
-      { id: 23, title: 'Are your products authentic?', views: 765 },
-      { id: 24, title: 'Do you offer gift wrapping?', views: 543 },
-      { id: 25, title: 'How do I care for my product?', views: 432 }
+      { id: 23, title: 'How do I choose a waist trainer size?', views: 765 },
+      { id: 24, title: 'What’s the difference between shapewear stages?', views: 543 },
+      { id: 25, title: 'How do I care for shapewear & trainers?', views: 432 }
     ]
   },
   {

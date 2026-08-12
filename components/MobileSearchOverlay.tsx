@@ -11,25 +11,25 @@ interface MobileSearchOverlayProps {
 export default function MobileSearchOverlay({ isOpen, onClose }: MobileSearchOverlayProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState([
-    'Summer Dress',
-    'Running Shoes',
-    'Leather Bag',
-    'Sunglasses'
+    'Waist Trainer',
+    'Bodysuit',
+    'BBL Shorts',
+    'Post Op Faja'
   ]);
 
   const popularSearches = [
-    'New Arrivals',
-    'Sale Items',
-    'Dresses',
-    'Men\'s Shoes',
-    'Electronics',
-    'Bags & Purses'
+    'Waist Trainers',
+    'Shapewear',
+    'Post Op',
+    'Athleisure',
+    'Gym Apparel',
+    'Bodysuits'
   ];
 
   const searchSuggestions = [
-    { name: 'Summer Floral Dress', category: 'Women\'s Clothing', price: 'GH₵289', image: 'https://readdy.ai/api/search-image?query=elegant%20summer%20floral%20dress%20on%20white%20mannequin%20with%20simple%20clean%20white%20studio%20background%20soft%20natural%20lighting%20feminine%20style%20fashion%20photography%20high%20quality%20detailed&width=80&height=80&seq=mob1&orientation=squarish' },
-    { name: 'Classic Leather Handbag', category: 'Bags', price: 'GH₵459', image: 'https://readdy.ai/api/search-image?query=luxury%20brown%20leather%20handbag%20on%20white%20surface%20clean%20minimalist%20white%20studio%20background%20professional%20product%20photography%20high%20quality%20detailed%20premium%20fashion&width=80&height=80&seq=mob2&orientation=squarish' },
-    { name: 'Designer Sunglasses', category: 'Accessories', price: 'GH₵199', image: 'https://readdy.ai/api/search-image?query=stylish%20modern%20sunglasses%20on%20white%20display%20stand%20clean%20white%20studio%20background%20professional%20product%20photography%20high%20quality%20detailed%20fashion%20accessory&width=80&height=80&seq=mob3&orientation=squarish' }
+    { name: 'Sleeveless Bodysuit', category: 'Shapewear', price: 'From $40', image: '/logo.png?v=5' },
+    { name: '25 Steelbone Waist Trainer', category: 'Waist Trainers', price: 'From $55', image: '/logo.png?v=5' },
+    { name: 'BBL Shorts', category: 'Shapewear', price: 'From $35', image: '/logo.png?v=5' }
   ];
 
   useEffect(() => {

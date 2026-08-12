@@ -40,62 +40,62 @@ export default function FAQsPage() {
     {
       category: 'shipping',
       question: 'What are your delivery times?',
-      answer: 'Standard delivery takes 2-5 business days within Ghana. Express delivery (next-day) is available for Accra and Kumasi. Orders placed before 2pm are dispatched same day. Remote areas may take 5-7 business days.'
+      answer: 'All orders take 3 days to 1 week to process. USA orders ship via USPS Priority Mail. International orders typically arrive within 10–15 business days, or sooner with express shipping.'
     },
     {
       category: 'shipping',
       question: 'How much does shipping cost?',
-      answer: 'Standard shipping costs GHS 20. Express delivery costs GHS 40. Orders over GHS 300 qualify for FREE standard shipping. Store pickup is also available at no charge from our Accra location.'
+      answer: 'Shipping rates are calculated at checkout based on your country or region. Ghana and international rates are managed separately so you always see the correct amount before you pay.'
     },
     {
       category: 'shipping',
       question: 'Do you ship outside Ghana?',
-      answer: 'Yes. Ghana customers check out in GH₵ (Mobile Money). International customers enter a full shipping address, see USD prices, and pay with PayPal. Shipping rates vary by country and are shown at checkout.'
+      answer: 'Yes. Ghana customers check out in GH₵ with Mobile Money (Moolre). USA and other international customers see USD prices, enter a full shipping address, and pay with PayPal.'
     },
     {
       category: 'shipping',
       question: 'What if nobody is home for delivery?',
-      answer: 'Our delivery partner will attempt delivery twice. If unsuccessful, the package will be held at the nearest collection point for 5 days. You\'ll receive SMS and email notifications with collection instructions.'
+      answer: 'For USA USPS deliveries, follow the carrier notice for redelivery or pickup. For other destinations, our delivery partner will attempt delivery and share collection instructions by SMS or email if needed.'
     },
     {
       category: 'returns',
       question: 'What is your return policy?',
-      answer: 'We offer a 14-day return policy for unused items in original packaging. Simply initiate a return from your account, print the return label, and ship it back. Refunds are processed within 5-7 business days after we receive the item.'
+      answer: 'BADDIECURVES accepts eligible returns within the United States for unused items in original packaging with tags. Returns are processed as store credit after inspection (typically 4–7 business days).'
     },
     {
       category: 'returns',
       question: 'Which items cannot be returned?',
-      answer: 'For hygiene reasons, we cannot accept returns on opened cosmetics, intimate apparel, earrings, or perishable goods. Custom or personalised items are also non-returnable unless defective.'
+      answer: 'For hygiene reasons, worn shapewear, waist trainers, post-op fajas, intimates, and items with odors, stains, sweat, or missing tags cannot be returned. Limited-edition pieces may only qualify for store credit toward another item.'
     },
     {
       category: 'returns',
       question: 'Who pays for return shipping?',
-      answer: 'If you\'re returning due to a defect or our error, we cover return shipping. For change-of-mind returns, customers pay return shipping costs (GHS 15 standard rate). Free shipping on returns for defective items.'
+      answer: 'Customers are responsible for shipping fees to and from unless the return is due to our error or a verified defect. Follow the steps on our Returns page so we can identify your package.'
     },
     {
       category: 'returns',
       question: 'Can I exchange an item instead of returning it?',
-      answer: 'Yes! If you need a different size or colour, select "Exchange" when initiating your return. We\'ll send the replacement as soon as we receive your original item. Exchange shipping is FREE.'
+      answer: 'Yes — if you need a different size or colour, start a return for store credit and repurchase the available option. Exact same-item exchanges depend on current stock.'
     },
     {
       category: 'payment',
       question: 'What payment methods do you accept?',
-      answer: 'We accept MTN Mobile Money, Vodafone Cash, AirtelTigo Money, and Visa/Mastercard credit and debit cards via our secure Moolre payment gateway. All transactions are encrypted and processed securely.'
+      answer: 'Ghana customers can pay with MTN, Vodafone, and AirtelTigo Mobile Money via Moolre. International customers pay securely in USD with PayPal.'
     },
     {
       category: 'payment',
       question: 'Is it safe to use my credit card on your site?',
-      answer: 'Absolutely. We use industry-standard SSL encryption and partner with Moolre for secure payment processing. We never store your full card details on our servers. All transactions are PCI-DSS compliant.'
+      answer: 'Yes. Checkout uses SSL encryption. Ghana payments are processed by Moolre; international payments are handled by PayPal. We never store your full card details on our servers.'
     },
     {
       category: 'payment',
       question: 'Can I pay in instalments?',
-      answer: 'Yes! We offer payment plans through our partners for purchases over GHS 500. Select "Pay in Instalments" at checkout to see available options. Approval is instant and no interest is charged.'
+      answer: 'Instalment options depend on your payment provider (for example PayPal Pay Later where available). At checkout, choose the method that fits you best.'
     },
     {
       category: 'payment',
       question: 'When will my payment be charged?',
-      answer: 'For card and mobile money payments, you\'re charged immediately. For Cash on Delivery, you pay when you receive your order. If an item is out of stock, we\'ll refund you within 24 hours.'
+      answer: 'Mobile Money and PayPal payments are charged when you complete checkout. If an item cannot be fulfilled, we will contact you and refund promptly.'
     },
     {
       category: 'payment',

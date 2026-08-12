@@ -11,16 +11,16 @@ const mockOrders = [
     items: [
       {
         id: 1,
-        name: 'Premium Leather Crossbody Bag',
-        price: 289,
-        image: 'https://readdy.ai/api/search-image?query=elegant%20premium%20leather%20crossbody%20bag%20in%20deep%20forest%20green%20color%20on%20clean%20minimal%20white%20studio%20background%20with%20soft%20natural%20lighting%20showcasing%20luxury%20craftsmanship&width=400&height=400&seq=return1&orientation=squarish',
+        name: 'Sleeveless Bodysuit',
+        price: 40,
+        image: '/logo.png?v=5',
         returnable: true
       },
       {
         id: 2,
-        name: 'Minimalist Ceramic Vase Set',
-        price: 159,
-        image: 'https://readdy.ai/api/search-image?query=modern%20minimalist%20ceramic%20vase%20set%20in%20matte%20cream%20and%20charcoal%20colors%20on%20pristine%20white%20background%20elegant%20home%20decor%20sophisticated%20styling&width=400&height=400&seq=return2&orientation=squarish',
+        name: '25 Steelbone Waist Trainer',
+        price: 55,
+        image: '/logo.png?v=5',
         returnable: true
       }
     ]

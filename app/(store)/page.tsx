@@ -328,7 +328,7 @@ export default function Home() {
           <AnimatedSection className="text-center mb-16">
             <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl text-gray-900 mb-4">Featured Products</h2>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              Hand-picked favourites — mark more as Featured in admin to show them here.
+              Hand-picked waist trainers, shapewear and athleisure favourites.
             </p>
           </AnimatedSection>
 
@@ -340,8 +340,11 @@ export default function Home() {
             </div>
           ) : featuredProducts.length === 0 ? (
             <p className="text-center text-gray-500 py-12">
-              No featured products yet. In admin, open a product and enable{' '}
-              <span className="font-semibold text-gray-700">Feature this product on homepage</span>.
+              Featured picks are coming soon.{' '}
+              <Link href="/shop" className="font-semibold text-gray-700 underline-offset-2 hover:underline">
+                Browse the full shop
+              </Link>
+              .
             </p>
           ) : (
             <AnimatedGrid className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">

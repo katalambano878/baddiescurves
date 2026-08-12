@@ -252,7 +252,7 @@ function ShopContent() {
     <main className="min-h-screen bg-white">
       <PageHero
         title="Shop All Products"
-        subtitle="Browse our curated range of authentic hair care, beauty products, lashes and accessories"
+        subtitle="Waist trainers, shapewear, post-op fajas, athleisure and gym apparel — shop every curve"
         backgroundImage="/page-hero-shop.jpeg"
       />
 

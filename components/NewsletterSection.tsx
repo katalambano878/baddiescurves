@@ -49,7 +49,7 @@ export default function NewsletterSection() {
             </h3>
 
             <p className="text-gray-500 text-[15.5px] leading-relaxed max-w-[27rem]">
-              Be the first to know about new arrivals, restocks, and exclusive deals. From dresses to electronics, we keep you updated on the latest products.
+              Be the first to know about new waist trainers, shapewear drops, restocks, and exclusive deals for every curve.
             </p>
           </div>
 

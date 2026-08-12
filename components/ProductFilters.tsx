@@ -24,8 +24,8 @@ export default function ProductFilters({ onFilterChange }: ProductFiltersProps) 
   const [onSale, setOnSale] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
 
-  const categories = ['Electronics', 'Fashion', 'Home Decor', 'Wearables', 'Clothing', 'Office'];
-  const brands = ['Apple', 'Samsung', 'Nike', 'Adidas', 'Sony', 'LG'];
+  const categories = ['Waist Trainers', 'Shapewear', 'Post Op', 'Athleisure / Travel Fits', 'Gym Apparel', 'Accessories'];
+  const brands = ['BADDIECURVES'];
   const ratings = [5, 4, 3, 2, 1];
 
   const handleCategoryToggle = (category: string) => {

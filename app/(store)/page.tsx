@@ -10,6 +10,7 @@ import AnimatedSection, { AnimatedGrid } from '@/components/AnimatedSection';
 import NewsletterSection from '@/components/NewsletterSection';
 import { useCMS } from '@/context/CMSContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { minVariantPrices } from '@/lib/currency';
 
 export default function Home() {
   usePageTitle('');
@@ -339,7 +340,7 @@ export default function Home() {
               {featuredProducts.map((product) => {
                 const variants = product.product_variants || [];
                 const hasVariants = variants.length > 0;
-                const minVariantPrice = hasVariants ? Math.min(...variants.map((v: any) => v.price || product.price)) : undefined;
+                const { minUsd, minGhs } = minVariantPrices(variants, product.price, product.price_ghs);
                 const totalVariantStock = hasVariants ? variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0) : 0;
                 const effectiveStock = hasVariants ? totalVariantStock : product.quantity;
 
@@ -364,6 +365,7 @@ export default function Home() {
                     slug={product.slug}
                     name={product.name}
                     price={product.price}
+                    price_ghs={product.price_ghs}
                     originalPrice={product.compare_at_price}
                     image={product.product_images?.[0]?.url || 'https://via.placeholder.com/400x500'}
                     rating={product.rating_avg || 5}
@@ -373,7 +375,8 @@ export default function Home() {
                     maxStock={effectiveStock || 50}
                     moq={product.moq || 1}
                     hasVariants={hasVariants}
-                    minVariantPrice={minVariantPrice}
+                    minVariantPrice={hasVariants ? minUsd : undefined}
+                    minVariantPrice_ghs={hasVariants ? minGhs : product.price_ghs}
                     colorVariants={colorVariants}
                   />
                 );

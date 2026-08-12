@@ -99,17 +99,50 @@ interface CurrencyHelpers {
   formatPrice: (usdPrice: number, ghsPrice?: number | null) => string;
   formatComparePrice: (usdCompare: number, ghsCompare?: number | null) => string;
   formatEquivalents: (usdPrice: number) => string | null;
+  /** Numeric amount for the visitor's market (cart / checkout). */
+  resolveAmount: (usdPrice: number, ghsPrice?: number | null) => number;
   currencyLabel: string;
+}
+
+/** Lowest USD / GHS prices across variants, falling back to product-level prices. */
+export function minVariantPrices(
+  variants: Array<{ price?: number | null; price_ghs?: number | null }>,
+  productPrice: number,
+  productPriceGhs?: number | null
+): { minUsd: number; minGhs: number | null } {
+  if (!variants?.length) {
+    return {
+      minUsd: Number(productPrice) || 0,
+      minGhs: productPriceGhs != null ? Number(productPriceGhs) : null,
+    };
+  }
+
+  const usdValues = variants.map((v) => Number(v.price ?? productPrice) || 0);
+  const ghsValues = variants
+    .map((v) => (v.price_ghs != null ? Number(v.price_ghs) : productPriceGhs != null ? Number(productPriceGhs) : null))
+    .filter((n): n is number => n != null && Number.isFinite(n));
+
+  return {
+    minUsd: Math.min(...usdValues),
+    minGhs: ghsValues.length ? Math.min(...ghsValues) : productPriceGhs != null ? Number(productPriceGhs) : null,
+  };
 }
 
 export function useCurrency(): CurrencyHelpers {
   const isGhana = useIsGhana();
 
   return useMemo(() => {
-    const resolve = (usdAmount: number, ghsAmount?: number | null): string => {
+    const resolveAmount = (usdAmount: number, ghsAmount?: number | null): number => {
       if (isGhana) {
-        return formatGHS(ghsAmount != null ? ghsAmount : usdAmount * USD_TO_GHS);
+        if (ghsAmount != null && Number.isFinite(Number(ghsAmount))) return Number(ghsAmount);
+        // Last resort only — prefer explicit Ghana prices on products/variants
+        return Number(usdAmount || 0) * USD_TO_GHS;
       }
+      return Number(usdAmount || 0);
+    };
+
+    const resolve = (usdAmount: number, ghsAmount?: number | null): string => {
+      if (isGhana) return formatGHS(resolveAmount(usdAmount, ghsAmount));
       return formatUSD(usdAmount);
     };
 
@@ -117,6 +150,7 @@ export function useCurrency(): CurrencyHelpers {
       isGhana,
       formatPrice: resolve,
       formatComparePrice: resolve,
+      resolveAmount,
       formatEquivalents: (usdPrice: number) => {
         if (isGhana) return null;
         return formatUsdEquivalents(usdPrice);

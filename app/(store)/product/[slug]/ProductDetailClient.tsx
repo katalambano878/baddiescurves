@@ -11,7 +11,7 @@ import { StructuredData, generateProductSchema, generateBreadcrumbSchema } from 
 import { notFound } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { useCurrency } from '@/lib/currency';
+import { minVariantPrices, useCurrency } from '@/lib/currency';
 
 // Map common color names to hex values for the swatch preview
 function colorNameToHex(name: string): string {
@@ -42,7 +42,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
 
   const { addToCart } = useCart();
-  const { formatPrice, formatComparePrice, formatEquivalents } = useCurrency();
+  const { formatPrice, formatComparePrice, formatEquivalents, resolveAmount, isGhana } = useCurrency();
 
   useEffect(() => {
     async function fetchProduct() {
@@ -140,7 +140,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
             `related:${productData.category_id}:${productData.id}`,
             (() => supabase
               .from('products')
-              .select('*, product_images(url, position), product_variants(id, name, price, quantity)')
+              .select('*, product_images(url, position), product_variants(id, name, price, price_ghs, quantity)')
               .eq('category_id', productData.category_id)
               .neq('id', productData.id)
               .limit(4)) as any,
@@ -151,7 +151,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
             setRelatedProducts(related.map((p: any) => {
               const variants = p.product_variants || [];
               const hasVariants = variants.length > 0;
-              const minVariantPrice = hasVariants ? Math.min(...variants.map((v: any) => v.price || p.price)) : undefined;
+              const { minUsd, minGhs } = minVariantPrices(variants, p.price, p.price_ghs);
               const totalVariantStock = hasVariants ? variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0) : 0;
               const effectiveStock = hasVariants ? totalVariantStock : p.quantity;
               return {
@@ -159,6 +159,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                 slug: p.slug,
                 name: p.name,
                 price: p.price,
+                price_ghs: p.price_ghs,
                 image: p.product_images?.[0]?.url || 'https://via.placeholder.com/800?text=No+Image',
                 rating: p.rating_avg || 0,
                 reviewCount: 0,
@@ -166,7 +167,8 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                 maxStock: effectiveStock || 50,
                 moq: p.moq || 1,
                 hasVariants,
-                minVariantPrice
+                minVariantPrice: hasVariants ? minUsd : undefined,
+                minVariantPrice_ghs: hasVariants ? minGhs : p.price_ghs,
               };
             }));
           }
@@ -190,7 +192,10 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
   const needsColorSelection = hasColors && !selectedColor;
 
   // Determine the active price: variant price if selected, otherwise base price
-  const activePrice = selectedVariant?.price ?? product?.price ?? 0;
+  const activeUsd = selectedVariant?.price ?? product?.price ?? 0;
+  const activeGhs = selectedVariant?.price_ghs ?? product?.price_ghs ?? null;
+  const activePrice = resolveAmount(activeUsd, activeGhs);
+  const activePriceUsd = Number(activeUsd) || 0;
   const activeStock = selectedVariant ? (selectedVariant.stock ?? selectedVariant.quantity ?? product?.stockCount ?? 0) : (product?.stockCount ?? 0);
 
   const handleAddToCart = () => {
@@ -249,15 +254,21 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
     );
   }
 
-  const discount = product.compare_at_price ? Math.round((1 - activePrice / product.compare_at_price) * 100) : 0;
-  const minVariantPrice = hasVariants ? Math.min(...product.variants.map((v: any) => v.price || product.price)) : product.price;
+  const discount = product.compare_at_price
+    ? Math.round((1 - activePriceUsd / product.compare_at_price) * 100)
+    : 0;
+  const { minUsd, minGhs } = minVariantPrices(
+    product.variants || [],
+    product.price,
+    product.price_ghs
+  );
 
   const productSchema = generateProductSchema({
     name: product.name,
     description: product.description,
     image: product.images[0],
-    price: hasVariants ? minVariantPrice : product.price,
-    currency: 'USD',
+    price: hasVariants ? minUsd : product.price,
+    currency: isGhana ? 'GHS' : 'USD',
     sku: product.sku,
     rating: product.rating,
     reviewCount: product.reviewCount,
@@ -367,18 +378,23 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                 <div className="flex items-baseline space-x-3 mb-8">
                   {hasVariants && !selectedVariant ? (
                     <span className="text-2xl lg:text-[30px] font-medium text-gray-900">
-                      <span className="text-lg text-gray-400 font-light mr-1.5">From</span>{formatPrice(minVariantPrice, product.price_ghs)}
+                      <span className="text-lg text-gray-400 font-light mr-1.5">From</span>
+                      {formatPrice(minUsd, minGhs)}
                     </span>
                   ) : (
-                    <span className="text-2xl lg:text-[30px] font-medium text-gray-900">{formatPrice(activePrice, selectedVariant?.price_ghs ?? product.price_ghs)}</span>
+                    <span className="text-2xl lg:text-[30px] font-medium text-gray-900">
+                      {formatPrice(activeUsd, activeGhs)}
+                    </span>
                   )}
-                  {product.compare_at_price && product.compare_at_price > activePrice && (
-                    <span className="text-lg text-gray-400 line-through decoration-gray-300">{formatComparePrice(product.compare_at_price, product.compare_at_price_ghs)}</span>
+                  {product.compare_at_price && product.compare_at_price > activePriceUsd && (
+                    <span className="text-lg text-gray-400 line-through decoration-gray-300">
+                      {formatComparePrice(product.compare_at_price, product.compare_at_price_ghs)}
+                    </span>
                   )}
                 </div>
-                {formatEquivalents(activePrice) && (
+                {formatEquivalents(activePriceUsd) && (
                   <p className="text-sm text-gray-500 -mt-5 mb-8">
-                    {formatEquivalents(activePrice)}
+                    {formatEquivalents(activePriceUsd)}
                   </p>
                 )}
 

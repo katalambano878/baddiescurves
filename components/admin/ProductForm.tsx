@@ -367,8 +367,14 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                             product_id: productId,
                             name: v.name || v.color || 'Default',
                             sku: v.sku || null,
-                            price: parseFloat(v.price) || 0,
-                            price_ghs: v.price_ghs ? parseFloat(v.price_ghs) : null,
+                            // Inherit product prices when a variant field is left blank
+                            // (prevents stale variant USD showing as huge Ghana prices on the shop).
+                            price: v.price !== '' && v.price != null
+                              ? parseFloat(v.price) || 0
+                              : (price ? parseFloat(price) : 0),
+                            price_ghs: v.price_ghs
+                              ? parseFloat(v.price_ghs)
+                              : (priceGhs ? parseFloat(priceGhs) : null),
                             quantity: parseInt(v.stock) || 0,
                             option1: v.name || null,
                             option2: v.color?.trim() || null,
@@ -576,7 +582,18 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                         <input
                                             type="number"
                                             value={price}
-                                            onChange={(e) => setPrice(e.target.value)}
+                                            onChange={(e) => {
+                                                const next = e.target.value;
+                                                setPrice(next);
+                                                // Keep uniform variant prices in sync with product price
+                                                setVariantData((prev) => {
+                                                    const updated: typeof prev = {};
+                                                    for (const [k, row] of Object.entries(prev)) {
+                                                        updated[k] = { ...row, price: next };
+                                                    }
+                                                    return updated;
+                                                });
+                                            }}
                                             className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             step="0.01"
                                             placeholder="0.00"
@@ -613,7 +630,17 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                         <input
                                             type="number"
                                             value={priceGhs}
-                                            onChange={(e) => setPriceGhs(e.target.value)}
+                                            onChange={(e) => {
+                                                const next = e.target.value;
+                                                setPriceGhs(next);
+                                                setVariantData((prev) => {
+                                                    const updated: typeof prev = {};
+                                                    for (const [k, row] of Object.entries(prev)) {
+                                                        updated[k] = { ...row, price_ghs: next };
+                                                    }
+                                                    return updated;
+                                                });
+                                            }}
                                             className="w-full pl-16 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             step="0.01"
                                             placeholder="0.00"

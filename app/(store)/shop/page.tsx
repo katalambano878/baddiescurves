@@ -10,7 +10,7 @@ import { getColorHex } from '@/components/ProductCard';
 import { supabase } from '@/lib/supabase';
 import { cachedQuery } from '@/lib/query-cache';
 import PageHero from '@/components/PageHero';
-import { useCurrency } from '@/lib/currency';
+import { minVariantPrices, useCurrency } from '@/lib/currency';
 
 function ShopContent() {
   usePageTitle('Shop All Products');
@@ -81,7 +81,7 @@ function ShopContent() {
                 *,
                 categories!inner(name, slug),
                 product_images!product_id(url, position),
-                product_variants(id, name, price, quantity, option1, option2, image_url)
+                product_variants(id, name, price, price_ghs, quantity, option1, option2, image_url)
               `, { count: 'exact' })
               .order('position', { foreignTable: 'product_images', ascending: true });
 
@@ -152,7 +152,7 @@ function ShopContent() {
           const formattedProducts = data.map((p: any) => {
             const variants = p.product_variants || [];
             const hasVariants = variants.length > 0;
-            const minVariantPrice = hasVariants ? Math.min(...variants.map((v: any) => v.price || p.price)) : undefined;
+            const { minUsd, minGhs } = minVariantPrices(variants, p.price, p.price_ghs);
             const totalVariantStock = hasVariants ? variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0) : 0;
             const effectiveStock = hasVariants ? totalVariantStock : p.quantity;
             // Extract unique colors from option2
@@ -174,6 +174,7 @@ function ShopContent() {
               slug: p.slug,       // Slug for navigation
               name: p.name,
               price: p.price,
+              price_ghs: p.price_ghs,
               originalPrice: p.compare_at_price,
               image: p.product_images?.[0]?.url || 'https://via.placeholder.com/800x800?text=No+Image',
               rating: p.rating_avg || 0,
@@ -184,7 +185,8 @@ function ShopContent() {
               moq: p.moq || 1,
               category: p.categories?.name,
               hasVariants,
-              minVariantPrice,
+              minVariantPrice: hasVariants ? minUsd : undefined,
+              minVariantPrice_ghs: hasVariants ? minGhs : p.price_ghs,
               colorVariants
             };
           });

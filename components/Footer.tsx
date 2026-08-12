@@ -143,10 +143,6 @@ export default function Footer() {
                     Terms of Service
                     <span className="absolute -bottom-1 left-0 w-0 h-px bg-white/40 transition-all duration-300 group-hover:w-full"></span>
                   </Link></li>
-                  <li><Link href="/admin" className="relative group inline-block hover:text-white transition-colors duration-300">
-                    Admin Access
-                    <span className="absolute -bottom-1 left-0 w-0 h-px bg-white/40 transition-all duration-300 group-hover:w-full"></span>
-                  </Link></li>
                 </ul>
               </div>
             </div>
@@ -154,7 +150,13 @@ export default function Footer() {
 
           {/* Footer Bottom Bar */}
           <div className="border-t border-white/5 mt-20 pt-10 flex flex-col md:flex-row justify-between items-center gap-6 text-[13px] text-gray-500 font-light tracking-wide">
-            <p>&copy; {new Date().getFullYear()} {siteName}. All rights reserved.</p>
+            <p>
+              &copy;{' '}
+              <Link href="/admin/login" className="hover:text-white transition-colors" aria-label="Admin login">
+                {new Date().getFullYear()}
+              </Link>{' '}
+              {siteName}. All rights reserved.
+            </p>
             <div className="flex gap-5 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
               <i className="ri-visa-line text-3xl"></i>
               <i className="ri-mastercard-line text-3xl"></i>

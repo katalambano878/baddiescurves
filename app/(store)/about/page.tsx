@@ -42,7 +42,7 @@ export default function AboutPage() {
       <PageHero
         title="The Lady Behind The Vision"
         subtitle="Waist trainers, shapewear, post-op & activewear for every woman who wants to look and feel beautiful."
-        backgroundImage="/page-hero-5.jpeg"
+        backgroundImage="/page-hero-about.jpeg"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">

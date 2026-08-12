@@ -45,7 +45,7 @@ export default async function CategoriesPage() {
       <PageHero
         title="Shop by Category"
         subtitle="Browse our collections of hair essentials, luxury lashes, and everyday beauty must-haves"
-        backgroundImage="/page-hero-categories-alt.jpeg"
+        backgroundImage="/page-hero-categories.jpeg"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

@@ -114,7 +114,7 @@ export default function ContactPage() {
       <PageHero
         title="Get In Touch"
         subtitle="Have a question? Send us a message."
-        backgroundImage="/page-hero-6.jpeg"
+        backgroundImage="/page-hero-contact.jpeg"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 relative">

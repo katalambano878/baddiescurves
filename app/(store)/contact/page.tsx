@@ -90,10 +90,11 @@ export default function ContactPage() {
   const heroTitle = pageContent?.title || 'Get In Touch';
   const heroSubtitle = pageContent?.subtitle || 'Have a question or need assistance?';
   const heroContent = pageContent?.content || 'Send us a message and we\'ll get back to you.';
-  const contactPhone = getSetting('contact_phone') || '054 927 8135';
-  const contactPhoneAlt = '059 609 3875';
-  const contactPhoneUsa = '908-244-0377';
-  const contactAddress = getSetting('contact_address') || 'East Legon, Accra';
+  const shopPhone = '054 927 8135';
+  const whatsappPrimary = '0549278135';
+  const whatsappSecondary = '0596093875';
+  const usaPhone = '908 244 0377';
+  const usaLocation = 'Union NJ';
   const siteName = getSetting('site_name') || "BADDIECURVES";
 
   const faqs = [
@@ -261,55 +262,68 @@ export default function ContactPage() {
               </p>
             </div>
 
-            {(contactPhone || contactAddress) && (
-              <div className="relative group overflow-hidden bg-white border border-gray-100 rounded-3xl p-8 sm:p-10 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.05)] transition-all duration-500 mb-12">
-                {/* Ethereal Glow */}
-                <div className="absolute top-0 right-0 w-48 h-48 bg-blue-50 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
+            <div className="relative group overflow-hidden bg-white border border-gray-100 rounded-3xl p-8 sm:p-10 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.05)] transition-all duration-500 mb-12">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-blue-50 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
 
-                <h3 className="font-serif text-xl font-bold text-gray-900 mb-6 tracking-wide relative z-10">{siteName}</h3>
-                <div className="space-y-5 relative z-10">
-                  {contactAddress && (
-                    <div className="flex items-start gap-4 text-gray-600">
-                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 group-hover:bg-white transition-colors duration-500">
-                        <i className="ri-map-pin-line text-lg text-gray-400"></i>
-                      </div>
-                      <p className="pt-2 font-light leading-relaxed">{contactAddress}</p>
-                    </div>
-                  )}
-                  <div className="flex items-start gap-4 text-gray-600">
-                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 group-hover:bg-white transition-colors duration-500">
-                      <i className="ri-phone-line text-lg text-gray-400"></i>
-                    </div>
-                    <div className="pt-2 space-y-2">
-                      <p className="font-light">
-                        <span className="font-medium text-gray-900">USA:</span>{' '}
-                        <a href={`tel:+1${contactPhoneUsa.replace(/\D/g, '')}`} className="hover:text-black transition-colors underline-offset-2 hover:underline">
-                          {contactPhoneUsa}
-                        </a>
-                      </p>
-                      <p className="font-light">
-                        <span className="font-medium text-gray-900">Ghana:</span>{' '}
-                        <a href={`tel:${contactPhone.replace(/\s/g, '')}`} className="hover:text-black transition-colors">
-                          {contactPhone}
-                        </a>
-                        {' / '}
-                        <a href={`tel:${contactPhoneAlt.replace(/\s/g, '')}`} className="hover:text-black transition-colors">
-                          {contactPhoneAlt}
-                        </a>
-                      </p>
+              <h3 className="font-serif text-xl font-bold text-gray-900 mb-8 tracking-wide relative z-10">{siteName}</h3>
+              <div className="space-y-7 relative z-10 text-gray-600">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
+                    <i className="ri-store-2-line text-lg text-gray-400"></i>
+                  </div>
+                  <div className="pt-1.5 space-y-1">
+                    <p className="font-semibold text-gray-900">Call Shop</p>
+                    <a href={`tel:${shopPhone.replace(/\s/g, '')}`} className="font-light hover:text-black transition-colors">
+                      {shopPhone}
+                    </a>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
+                    <i className="ri-whatsapp-line text-lg text-gray-400"></i>
+                  </div>
+                  <div className="pt-1.5 space-y-1">
+                    <p className="font-semibold text-gray-900">What&apos;s app</p>
+                    <a
+                      href={`https://wa.me/233${whatsappPrimary.replace(/^0/, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block font-light hover:text-black transition-colors"
+                    >
+                      {whatsappPrimary}
+                    </a>
+                    <a
+                      href={`https://wa.me/233${whatsappSecondary.replace(/^0/, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block font-light hover:text-black transition-colors"
+                    >
+                      {whatsappSecondary}
+                    </a>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
+                    <i className="ri-map-pin-line text-lg text-gray-400"></i>
+                  </div>
+                  <div className="pt-1.5 space-y-1">
+                    <p className="font-semibold text-gray-900">USA</p>
+                    <p className="font-light">Location: {usaLocation}</p>
+                    <p className="font-light">
+                      Call:{' '}
                       <a
-                        href={`https://wa.me/233${contactPhone.replace(/\D/g, '').replace(/^0/, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                        href={`tel:+1${usaPhone.replace(/\D/g, '')}`}
+                        className="hover:text-black transition-colors underline-offset-2 hover:underline"
                       >
-                        <i className="ri-whatsapp-fill mr-1.5 text-sm"></i> WhatsApp Us
+                        {usaPhone}
                       </a>
-                    </div>
+                    </p>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             <div className="space-y-3">
               {faqs.map((faq, index) => (

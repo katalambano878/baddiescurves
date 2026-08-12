@@ -65,20 +65,36 @@ export default function ShippingPage() {
             <p className="text-gray-600 leading-relaxed mb-4 text-center max-w-2xl mx-auto">
               Questions about shipping or your order? Reach out — we&apos;re here to help.
             </p>
-            <div className="bg-[#0A0F1D] rounded-2xl p-8 text-white border border-white/10 max-w-2xl mx-auto">
-              <p className="text-gray-300 mb-2">
-                <strong className="text-white">USA:</strong>{' '}
-                <a href="tel:+19082440377" className="hover:text-white underline-offset-2 hover:underline">
-                  908-244-0377
+            <div className="bg-[#0A0F1D] rounded-2xl p-8 text-white border border-white/10 max-w-2xl mx-auto space-y-4">
+              <div>
+                <p className="text-white font-semibold mb-1">Call Shop</p>
+                <a href="tel:0549278135" className="text-gray-300 hover:text-white underline-offset-2 hover:underline">
+                  054 927 8135
                 </a>
-              </p>
-              <p className="text-gray-300 mb-2">
-                <strong className="text-white">Ghana:</strong> 054 927 8135 / 059 609 3875
-              </p>
-              <p className="text-gray-300 mb-4">
-                <strong className="text-white">Location:</strong> East Legon, Accra
-              </p>
-              <div className="flex flex-wrap gap-4">
+              </div>
+              <div>
+                <p className="text-white font-semibold mb-1">What&apos;s app</p>
+                <p className="text-gray-300">
+                  <a href="https://wa.me/233549278135" target="_blank" rel="noopener noreferrer" className="hover:text-white underline-offset-2 hover:underline">
+                    0549278135
+                  </a>
+                  <br />
+                  <a href="https://wa.me/233596093875" target="_blank" rel="noopener noreferrer" className="hover:text-white underline-offset-2 hover:underline">
+                    0596093875
+                  </a>
+                </p>
+              </div>
+              <div>
+                <p className="text-white font-semibold mb-1">USA</p>
+                <p className="text-gray-300">Location: Union NJ</p>
+                <p className="text-gray-300">
+                  Call:{' '}
+                  <a href="tel:+19082440377" className="hover:text-white underline-offset-2 hover:underline">
+                    908 244 0377
+                  </a>
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-4 pt-2">
                 <Link
                   href="/contact"
                   className="inline-flex items-center gap-2 bg-white text-[#0A0F1D] px-6 py-3 rounded-full font-medium hover:bg-gray-100 transition-colors"

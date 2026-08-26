@@ -82,8 +82,11 @@ export default function AdminReviewsPage() {
   };
 
   const statusColors: any = {
+    'pending': 'bg-amber-100 text-amber-700',
     'Pending': 'bg-amber-100 text-amber-700',
+    'approved': 'bg-blue-100 text-blue-700',
     'Approved': 'bg-blue-100 text-blue-700',
+    'rejected': 'bg-red-100 text-red-700',
     'Rejected': 'bg-red-100 text-red-700'
   };
 
@@ -107,8 +110,8 @@ export default function AdminReviewsPage() {
     if (selectedReviews.length === 0) return;
     try {
       let newStatus = '';
-      if (action === 'Approve') newStatus = 'Approved';
-      if (action === 'Reject') newStatus = 'Rejected';
+      if (action === 'Approve') newStatus = 'approved';
+      if (action === 'Reject') newStatus = 'rejected';
 
       if (newStatus) {
         const { error } = await supabase

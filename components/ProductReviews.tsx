@@ -50,13 +50,12 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
   const fetchReviews = async () => {
     try {
       // Fetch approved reviews (cached for 5 minutes)
-      const { data, error } = await cachedQuery<{ data: any; error: any }>(
+        const { data, error } = await cachedQuery<{ data: any; error: any }>(
         `reviews:${productId}`,
         (() => supabase
           .from('reviews')
           .select('*')
           .eq('product_id', productId)
-          .eq('status', 'approved')
           .order('created_at', { ascending: false })) as any,
         5 * 60 * 1000
       );
@@ -64,13 +63,13 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
       if (error) throw error;
 
       if (data) {
-        // We need to fetch user names if possible. Since we don't have public profiles easily accessible 
-        // without complicated RLS/joins in client, we might fallback to generic name or metadata if stored.
-        // For this demo, we'll try to use a "clean" name or just "Verified Customer"
+        const approvedRows = (Array.isArray(data) ? data : []).filter(
+          (r: any) => String(r.status || '').toLowerCase() === 'approved'
+        );
 
-        const formattedReviews = data.map((r: any) => ({
+        const formattedReviews = approvedRows.map((r: any) => ({
           id: r.id,
-          author: 'Verified Customer', // or fetch from profiles if we had it joined
+          author: 'Verified Customer',
           rating: r.rating,
           date: r.created_at,
           verified: r.verified_purchase,
@@ -80,6 +79,8 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
           user_id: r.user_id
         }));
         setReviews(formattedReviews);
+      } else {
+        setReviews([]);
       }
     } catch (err) {
       console.error('Error fetching reviews:', err);
@@ -128,17 +129,17 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
         rating: reviewForm.rating,
         title: reviewForm.title,
         content: reviewForm.content,
-        status: 'approved', // Auto-approve for demo
-        verified_purchase: false // We could check orders here but keeping it simple
+        status: 'pending',
+        verified_purchase: false
       }]);
 
       if (error) throw error;
 
-      alert('Review submitted successfully!');
+      alert('Thanks! Your review was submitted and will appear after admin approval.');
       setShowReviewForm(false);
       setReviewForm({ rating: 5, title: '', content: '' });
-      invalidateCache(`reviews:${productId}`); // Clear cache so fresh data is fetched
-      fetchReviews(); // Refresh list
+      invalidateCache(`reviews:${productId}`);
+      fetchReviews();
 
     } catch (err: any) {
       console.error('Submit review error:', err);

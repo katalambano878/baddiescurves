@@ -8,6 +8,8 @@ import AnimatedSection, { AnimatedGrid } from '@/components/AnimatedSection';
 import NewsletterSection from '@/components/NewsletterSection';
 import DualPromoBanners from '@/components/home/DualPromoBanners';
 import BestSellersSection from '@/components/home/BestSellersSection';
+import NewArrivalsSection from '@/components/home/NewArrivalsSection';
+import ReviewsSection from '@/components/home/ReviewsSection';
 import CountdownDealBanner from '@/components/home/CountdownDealBanner';
 import { useCMS } from '@/context/CMSContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -330,7 +332,11 @@ export default function Home() {
         loading={loading}
       />
 
+      <NewArrivalsSection />
+
       <CountdownDealBanner />
+
+      <ReviewsSection />
 
       {/* Newsletter - Homepage Only */}
       <NewsletterSection />

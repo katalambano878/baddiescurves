@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
-import ProductCard, { type ColorVariant, getColorHex } from '@/components/ProductCard';
-import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton';
 import AnimatedSection, { AnimatedGrid } from '@/components/AnimatedSection';
 import NewsletterSection from '@/components/NewsletterSection';
+import DualPromoBanners from '@/components/home/DualPromoBanners';
+import BestSellersSection from '@/components/home/BestSellersSection';
+import CountdownDealBanner from '@/components/home/CountdownDealBanner';
 import { useCMS } from '@/context/CMSContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { minVariantPrices } from '@/lib/currency';
 
 export default function Home() {
   usePageTitle('');
@@ -322,89 +322,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Products */}
-      <section className="py-16 md:py-24 bg-stone-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AnimatedSection className="text-center mb-16">
-            <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl text-gray-900 mb-4">Featured Products</h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              Hand-picked waist trainers, shapewear and athleisure favourites.
-            </p>
-          </AnimatedSection>
+      <DualPromoBanners />
 
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-8">
-              {[...Array(8)].map((_, i) => (
-                <ProductCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : featuredProducts.length === 0 ? (
-            <p className="text-center text-gray-500 py-12">
-              Featured picks are coming soon.{' '}
-              <Link href="/shop" className="font-semibold text-gray-700 underline-offset-2 hover:underline">
-                Browse the full shop
-              </Link>
-              .
-            </p>
-          ) : (
-            <AnimatedGrid className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
-              {featuredProducts.map((product) => {
-                const variants = product.product_variants || [];
-                const hasVariants = variants.length > 0;
-                const { minUsd, minGhs } = minVariantPrices(variants, product.price, product.price_ghs);
-                const totalVariantStock = hasVariants ? variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0) : 0;
-                const effectiveStock = hasVariants ? totalVariantStock : product.quantity;
+      <BestSellersSection
+        products={featuredProducts}
+        categories={categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
+        loading={loading}
+      />
 
-                // Extract unique colors from option2
-                const colorVariants: ColorVariant[] = [];
-                const seenColors = new Set<string>();
-                for (const v of variants) {
-                  const colorName = (v as any).option2;
-                  if (colorName && !seenColors.has(colorName.toLowerCase().trim())) {
-                    const hex = getColorHex(colorName);
-                    if (hex) {
-                      seenColors.add(colorName.toLowerCase().trim());
-                      colorVariants.push({ name: colorName.trim(), hex });
-                    }
-                  }
-                }
-
-                return (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    slug={product.slug}
-                    name={product.name}
-                    price={product.price}
-                    price_ghs={product.price_ghs}
-                    originalPrice={product.compare_at_price}
-                    image={product.product_images?.[0]?.url || 'https://via.placeholder.com/400x500'}
-                    rating={product.rating_avg || 5}
-                    reviewCount={product.review_count || 0}
-                    badge={product.featured ? 'Featured' : undefined}
-                    inStock={effectiveStock > 0}
-                    maxStock={effectiveStock || 50}
-                    moq={product.moq || 1}
-                    hasVariants={hasVariants}
-                    minVariantPrice={hasVariants ? minUsd : undefined}
-                    minVariantPrice_ghs={hasVariants ? minGhs : product.price_ghs}
-                    colorVariants={colorVariants}
-                  />
-                );
-              })}
-            </AnimatedGrid>
-          )}
-
-          <div className="text-center mt-16">
-            <Link
-              href="/shop"
-              className="inline-flex items-center justify-center bg-gray-900 text-white px-10 py-4 rounded-full font-medium hover:bg-blue-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 btn-animate"
-            >
-              View All Products
-            </Link>
-          </div>
-        </div>
-      </section>
+      <CountdownDealBanner />
 
       {/* Newsletter - Homepage Only */}
       <NewsletterSection />

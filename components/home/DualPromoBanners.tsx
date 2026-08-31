@@ -10,7 +10,7 @@ const promos = [
     titleLead: 'Shapewear',
     titleAccent: 'Essentials',
     description: 'Bodysuits, fajas, and everyday smoothing pieces built for every curve.',
-    href: '/shop?category=SHAPEWEAR',
+    href: '/shop?category=shapewear',
     image: '/hero1.jpeg',
     theme: 'light' as const,
   },

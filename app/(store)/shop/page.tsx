@@ -115,6 +115,12 @@ function ShopContent() {
     let cancelled = false;
 
     async function fetchProducts() {
+      // Wait for categories list before filtering by slug (avoids empty race)
+      if (selectedCategory !== 'all' && categories.length <= 1) {
+        setLoading(true);
+        return;
+      }
+
       fetchingRef.current = true;
       const isFirstPage = page === 1;
       if (isFirstPage) setLoading(true);
@@ -128,7 +134,7 @@ function ShopContent() {
           .select(
             `
                 *,
-                categories!inner(name, slug),
+                categories(name, slug),
                 product_images!product_id(url, position),
                 product_variants(id, name, price, price_ghs, quantity, option1, option2, image_url)
               `,
@@ -142,18 +148,23 @@ function ShopContent() {
         }
 
         if (selectedCategory !== 'all') {
-          const categoryObj = categories.find((c) => c.slug === selectedCategory);
+          const norm = (s: string) => String(s || '').trim().toLowerCase();
+          const categoryObj = categories.find(
+            (c) => norm(c.slug) === norm(selectedCategory) || norm(c.name) === norm(selectedCategory)
+          );
 
-          if (categoryObj) {
-            const targetSlugs = [selectedCategory];
-            const childSlugs = categories
-              .filter((c) => c.parent_id === categoryObj.id)
-              .map((c) => c.slug);
-            targetSlugs.push(...childSlugs);
-            query = query.in('categories.slug', targetSlugs);
-          } else {
-            query = query.eq('categories.slug', selectedCategory);
+          if (!categoryObj?.id) {
+            setProducts([]);
+            setTotalProducts(0);
+            setHasMore(false);
+            return;
           }
+
+          const categoryIds = [
+            categoryObj.id,
+            ...categories.filter((c) => c.parent_id === categoryObj.id).map((c) => c.id),
+          ];
+          query = query.in('category_id', categoryIds);
         }
 
         if (priceRange[1] < 5000) {

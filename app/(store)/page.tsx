@@ -273,7 +273,7 @@ export default function Home() {
 
           <AnimatedGrid className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 lg:gap-10">
             {categories.map((category) => (
-              <Link href={`/shop?category=${category.slug}`} key={category.id} className="group cursor-pointer block relative outline-none">
+              <Link href={`/shop?category=${encodeURIComponent(category.slug)}`} key={category.id} className="group cursor-pointer block relative outline-none">
                 <div className="aspect-[4/5] rounded-[2rem] overflow-hidden relative bg-white border border-gray-100 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] transition-all duration-1000 transform group-hover:-translate-y-2">
 
                   {/* Image scaling and styling */}

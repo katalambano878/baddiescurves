@@ -54,7 +54,7 @@ export default async function CategoriesPage() {
             {categories.map((category) => (
               <Link
                 key={category.id}
-                href={`/shop?category=${category.slug}`}
+                href={`/shop?category=${encodeURIComponent(category.slug)}`}
                 className="group relative bg-white p-2.5 sm:p-3 rounded-[2rem] sm:rounded-[2.5rem] flex flex-col border border-gray-100/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] transition-all duration-1000 hover:-translate-y-1 cursor-pointer"
               >
                 {/* Image Section */}

@@ -103,17 +103,30 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const normalizeSlug = (raw: string) =>
+    raw
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
   const handleSubmit = async () => {
     if (!formData.name || !formData.slug) {
       alert('Name and Slug are required');
       return;
     }
 
+    const cleanSlug = normalizeSlug(formData.slug);
+    if (!cleanSlug) {
+      alert('Slug must contain letters or numbers');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
-        name: formData.name,
-        slug: formData.slug,
+        name: formData.name.trim(),
+        slug: cleanSlug,
         description: formData.description,
         image_url: formData.image_url,
         parent_id: formData.parent_id || null, // Handle empty string as null

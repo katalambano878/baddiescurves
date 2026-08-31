@@ -41,8 +41,28 @@ export async function GET(request: Request) {
         if (featured) {
             query = query.eq('featured', true).limit(limit);
         } else if (category) {
-            // Filter by category slug or name
-            query = query.limit(limit);
+            const { data: catRow } = await supabase
+                .from('categories')
+                .select('id')
+                .eq('slug', category)
+                .maybeSingle();
+            if (catRow?.id) {
+                query = query.eq('category_id', catRow.id).limit(limit);
+            } else {
+                // Case-insensitive / trimmed fallback
+                const { data: cats } = await supabase
+                    .from('categories')
+                    .select('id, slug')
+                    .eq('status', 'active');
+                const match = (cats || []).find(
+                    (c: any) => String(c.slug || '').trim().toLowerCase() === category.trim().toLowerCase()
+                );
+                if (match?.id) {
+                    query = query.eq('category_id', match.id).limit(limit);
+                } else {
+                    return NextResponse.json([]);
+                }
+            }
         } else {
             query = query.limit(limit);
         }

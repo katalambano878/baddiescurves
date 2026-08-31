@@ -85,6 +85,22 @@ function uuidSafeLeft(col: string, value: any): string {
   return ident(col);
 }
 
+/**
+ * PostgREST embed filters like `categories.slug=eq.x` become
+ * `category_id IN (SELECT id FROM categories WHERE slug = x)`.
+ */
+function resolveForwardEmbedFilter(
+  table: string,
+  col: string
+): { fkCol: string; relTable: string; relCol: string } | null {
+  if (!col.includes(".")) return null;
+  const [rel, relCol] = col.split(".");
+  if (!rel || !relCol || !PG_IDENT.test(rel) || !PG_IDENT.test(relCol)) return null;
+  const fwd = (FK_MAP[table] || []).find((e) => e.foreignTable === rel);
+  if (!fwd) return null;
+  return { fkCol: fwd.column, relTable: rel, relCol };
+}
+
 // ---- select-string parser (handles nested embeds with parentheses) ---------
 function parseSelect(sel: string): ParsedSelect {
   const result: ParsedSelect = { columns: [], star: false, embeds: [] };
@@ -387,21 +403,35 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any; count: number
         if (!f.values || f.values.length === 0) {
           clauses.push("false");
         } else {
+          const nested = resolveForwardEmbedFilter(this.table, f.col!);
           const ph = f.values.map((v) => {
             params.push(v);
             return `$${params.length}`;
           });
-          clauses.push(`${ident(f.col!)} IN (${ph.join(",")})`);
+          if (nested) {
+            clauses.push(
+              `${ident(nested.fkCol)} IN (SELECT ${ident("id")} FROM ${ident(nested.relTable)} WHERE ${ident(nested.relCol)} IN (${ph.join(",")}))`
+            );
+          } else {
+            clauses.push(`${ident(f.col!)} IN (${ph.join(",")})`);
+          }
         }
       } else if (f.kind === "notIn") {
         const raw = String(f.value).replace(/^\(|\)$/g, "").trim();
         if (!raw) { clauses.push("true"); continue; }
         const vals = raw.split(",").map((s) => s.trim());
+        const nested = resolveForwardEmbedFilter(this.table, f.col!);
         const ph = vals.map((v) => {
           params.push(v);
           return `$${params.length}`;
         });
-        clauses.push(`(${ident(f.col!)} IS NULL OR ${ident(f.col!)} NOT IN (${ph.join(",")}))`);
+        if (nested) {
+          clauses.push(
+            `(${ident(nested.fkCol)} IS NULL OR ${ident(nested.fkCol)} NOT IN (SELECT ${ident("id")} FROM ${ident(nested.relTable)} WHERE ${ident(nested.relCol)} IN (${ph.join(",")})))`
+          );
+        } else {
+          clauses.push(`(${ident(f.col!)} IS NULL OR ${ident(f.col!)} NOT IN (${ph.join(",")}))`);
+        }
       } else if (f.kind === "is") {
         clauses.push(this.isClause(f.col!, f.value));
       } else if (f.kind === "notIs") {
@@ -437,6 +467,14 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any; count: number
     const o = sqlOp[bare];
     if (!o) throw new Error(`Unsupported operator: ${op}`);
     params.push(value);
+
+    const nested = resolveForwardEmbedFilter(this.table, col);
+    if (nested) {
+      const left = uuidSafeLeft(nested.relCol, value);
+      const clause = `${ident(nested.fkCol)} IN (SELECT ${ident("id")} FROM ${ident(nested.relTable)} WHERE ${left} ${o} $${params.length})`;
+      return negate ? `NOT (${clause})` : clause;
+    }
+
     // Avoid Postgres uuid cast errors for filters like id.eq.ORD-123
     // (PostgREST coerces; we compare as text when the value is not a UUID).
     const left = uuidSafeLeft(col, value);

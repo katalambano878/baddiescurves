@@ -54,10 +54,9 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const fetchOrderDetails = async () => {
     try {
       setLoading(true);
-      // Try to fetch by ID or order_number
-      let query = supabase
-        .from('orders')
-        .select(`
+      setError(null);
+
+      const orderSelect = `
           *,
           order_items (
             id,
@@ -70,17 +69,40 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
             total_price,
             metadata,
             products (
-              product_images (url)
+              id,
+              name,
+              slug,
+              product_images (url, position)
             )
           )
-        `)
-        .eq('id', orderId);
+        `;
 
-      let { data, error } = await query.single();
+      // Try to fetch by ID or order_number
+      let { data, error } = await supabase
+        .from('orders')
+        .select(orderSelect)
+        .eq('id', orderId)
+        .maybeSingle();
 
-      if (error && error.code === 'PGRST116') {
-        // Not found by ID, try order_number
-        const { data: dataByNum, error: errorByNum } = await supabase
+      if ((!data || error) && orderId) {
+        // Not found by UUID, try order_number
+        const byNum = await supabase
+          .from('orders')
+          .select(orderSelect)
+          .eq('order_number', orderId)
+          .maybeSingle();
+
+        if (byNum.data) {
+          data = byNum.data;
+          error = null;
+        } else if (byNum.error) {
+          error = byNum.error;
+        }
+      }
+
+      // Fallback without nested product images if embed path fails
+      if (error || !data) {
+        let plain = await supabase
           .from('orders')
           .select(`
             *,
@@ -93,40 +115,70 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               quantity,
               unit_price,
               total_price,
-              metadata,
-              products (
-                product_images (url)
-              )
+              metadata
             )
           `)
-          .eq('order_number', orderId)
-          .single();
+          .eq('id', orderId)
+          .maybeSingle();
 
-        if (dataByNum) {
-          data = dataByNum;
+        if (!plain.data) {
+          plain = await supabase
+            .from('orders')
+            .select(`
+              *,
+              order_items (
+                id,
+                product_id,
+                product_name,
+                variant_name,
+                sku,
+                quantity,
+                unit_price,
+                total_price,
+                metadata
+              )
+            `)
+            .eq('order_number', orderId)
+            .maybeSingle();
+        }
+
+        if (plain.data) {
+          data = plain.data;
           error = null;
-        } else {
-          error = errorByNum;
+        } else if (plain.error) {
+          error = plain.error;
         }
       }
 
       if (error) throw error;
+      if (!data) throw new Error('Order not found');
+
       setOrder(data);
       setTrackingNumber(data.metadata?.tracking_number || '');
       setAdminNotes(data.notes || '');
 
     } catch (err: any) {
       console.error('Error fetching order:', err);
-      setError('Failed to load order details');
+      setError(err?.message || 'Failed to load order details');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getOrderCustomerName = (o: any) => {
+    const addr = o?.shipping_address || {};
+    if (addr.firstName || addr.lastName) {
+      return `${addr.firstName?.trim() || ''} ${addr.lastName?.trim() || ''}`.trim();
+    }
+    return addr.full_name || addr.firstName || o?.email?.split('@')[0] || 'Customer';
   };
 
   const handleUpdateStatus = async (newStatus?: string) => {
     try {
       setStatusUpdating(true);
       const statusToUpdate = newStatus || order.status;
+      const shippingAddress = order.shipping_address || {};
+      const customerName = getOrderCustomerName(order);
 
       const { error } = await supabase
         .from('orders')
@@ -175,7 +227,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               orderNumber: order.order_number || orderId,
               status: statusToUpdate,
               trackingNumber: trackingNumber,
-              phone: shippingAddress.phone || order.phone // Ensure phone is passed for SMS
+              phone: shippingAddress.phone || order.phone
             }
           })
         }).catch(err => console.error('Notification error:', err));
@@ -254,7 +306,16 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   };
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
-  if (error || !order) return <div className="p-8 text-center text-red-500">{error || 'Order not found'}</div>;
+  if (error || !order) {
+    return (
+      <div className="p-8 text-center space-y-4">
+        <p className="text-red-500 font-medium">{error || 'Order not found'}</p>
+        <Link href="/admin/orders" className="inline-flex text-blue-700 hover:underline font-semibold">
+          ← Back to Orders
+        </Link>
+      </div>
+    );
+  }
 
   const currentStatus = order.status || 'pending';
   const shippingAddress = order.shipping_address || {};

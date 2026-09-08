@@ -91,12 +91,12 @@ export default function AdminOrdersPage() {
         .order('created_at', { ascending: false })
         .limit(500);
 
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Orders query timed out')), 15_000)
-      );
+      const timeoutMs = 20_000;
       const { data: ordersData, error } = await Promise.race([
-        Promise.resolve(query),
-        timeout,
+        query,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Orders query timed out')), timeoutMs)
+        ),
       ]);
 
       if (error) throw error;

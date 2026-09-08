@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import MiniCart from './MiniCart';
+import AnnouncementBar from './AnnouncementBar';
 import { useCart } from '@/context/CartContext';
 import { supabase } from '@/lib/supabase';
 import { useCMS } from '@/context/CMSContext';
@@ -65,7 +66,9 @@ export default function Header() {
 
   return (
     <>
-      <header className="bg-white/70 backdrop-blur-3xl sticky top-0 z-50 border-b border-black/[0.04] shadow-[0_20px_40px_-24px_rgba(0,0,0,0.02)] transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] supports-[backdrop-filter]:bg-white/50">
+      <div className="sticky top-0 z-50">
+        <AnnouncementBar />
+        <header className="bg-white/70 backdrop-blur-3xl border-b border-black/[0.04] shadow-[0_20px_40px_-24px_rgba(0,0,0,0.02)] transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] supports-[backdrop-filter]:bg-white/50">
         <div className="safe-area-top" />
         <nav aria-label="Main navigation" className="relative">
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -172,6 +175,7 @@ export default function Header() {
           </div>
         </nav>
       </header>
+      </div>
 
       {isSearchOpen && (
         <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4 sm:px-6">

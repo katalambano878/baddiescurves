@@ -9,6 +9,7 @@ interface CacheEntry<T> {
 }
 
 const cache = new Map<string, CacheEntry<any>>();
+const inFlight = new Map<string, Promise<any>>();
 
 const DEFAULT_TTL = 10 * 60 * 1000; // 10 minutes — reduce re-fetches during browsing
 
@@ -25,10 +26,23 @@ export async function cachedQuery<T>(
   if (cached && (Date.now() - cached.timestamp) < ttlMs) {
     return cached.data;
   }
-  
-  const data = await queryFn();
-  cache.set(key, { data, timestamp: Date.now() });
-  return data;
+
+  const pending = inFlight.get(key);
+  if (pending) {
+    return pending as Promise<T>;
+  }
+
+  const promise = queryFn()
+    .then((data) => {
+      cache.set(key, { data, timestamp: Date.now() });
+      return data;
+    })
+    .finally(() => {
+      inFlight.delete(key);
+    });
+
+  inFlight.set(key, promise);
+  return promise;
 }
 
 /**
@@ -36,6 +50,7 @@ export async function cachedQuery<T>(
  */
 export function invalidateCache(key: string) {
   cache.delete(key);
+  inFlight.delete(key);
 }
 
 /**
@@ -45,6 +60,7 @@ export function invalidateCachePrefix(prefix: string) {
   for (const key of cache.keys()) {
     if (key.startsWith(prefix)) {
       cache.delete(key);
+      inFlight.delete(key);
     }
   }
 }
@@ -54,4 +70,5 @@ export function invalidateCachePrefix(prefix: string) {
  */
 export function clearCache() {
   cache.clear();
+  inFlight.clear();
 }

@@ -6,9 +6,11 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/lib/currency';
+import { useCart } from '@/context/CartContext';
 
 function OrderSuccessContent() {
   const { formatPrice } = useCurrency();
+  const { clearCart } = useCart();
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
   const paymentSuccess = searchParams.get('payment_success');
@@ -139,11 +141,17 @@ function OrderSuccessContent() {
 
   const orderDate = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const estimatedDelivery = new Date(new Date(order.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  const pointsEarned = Math.floor(order.total / 10); // Example logic: 1 point per 10 currency units
+  const isPaid = order.payment_status === 'paid';
+  const pointsEarned = Math.floor(order.total / 10);
+  const payUrl = `/pay/${order.order_number || order.id}`;
+
+  useEffect(() => {
+    if (isPaid) clearCart();
+  }, [isPaid, clearCart]);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      {showConfetti && (
+      {showConfetti && isPaid && (
         <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
           {[...Array(50)].map((_, i) => (
             <div
@@ -165,13 +173,19 @@ function OrderSuccessContent() {
       <section className="py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center mb-8">
-            <div className="w-24 h-24 flex items-center justify-center mx-auto mb-6 bg-blue-100 rounded-full">
-              <i className="ri-checkbox-circle-fill text-6xl text-blue-600"></i>
+            <div className={`w-24 h-24 flex items-center justify-center mx-auto mb-6 rounded-full ${isPaid ? 'bg-blue-100' : 'bg-amber-100'}`}>
+              <i className={`text-6xl ${isPaid ? 'ri-checkbox-circle-fill text-blue-600' : 'ri-time-fill text-amber-600'}`}></i>
             </div>
 
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Order Confirmed!</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              {isPaid ? 'Order Confirmed!' : 'Payment Pending'}
+            </h1>
             <p className="text-xl text-gray-600 mb-8">
-              Thank you for your purchase. We're processing your order now.
+              {isPaid
+                ? "Thank you for your purchase. We're processing your order now."
+                : verifying
+                  ? 'Verifying your payment — this may take a moment…'
+                  : 'Your order was received but payment is not complete yet. Complete payment to confirm your order.'}
             </p>
 
             <div className="bg-blue-50 rounded-xl p-6 mb-8">
@@ -192,6 +206,15 @@ function OrderSuccessContent() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+              {!isPaid && (
+                <Link
+                  href={payUrl}
+                  className="bg-amber-500 hover:bg-amber-600 text-white px-8 py-4 rounded-lg font-semibold transition-colors inline-flex items-center justify-center whitespace-nowrap"
+                >
+                  <i className="ri-bank-card-line mr-2"></i>
+                  Complete Payment
+                </Link>
+              )}
               <Link
                 href={`/account?tab=orders`}
                 className="bg-blue-700 hover:bg-blue-800 text-white px-8 py-4 rounded-lg font-semibold transition-colors inline-flex items-center justify-center whitespace-nowrap"
@@ -208,6 +231,7 @@ function OrderSuccessContent() {
               </Link>
             </div>
 
+            {isPaid && (
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border-2 border-amber-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
@@ -227,13 +251,14 @@ function OrderSuccessContent() {
                 </Link>
               </div>
             </div>
+            )}
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-8">
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Order Items</h2>
               <div className="space-y-4">
-                {order.order_items.map((item: any) => (
+                {order.order_items?.map((item: any) => (
                   <div key={item.id} className="flex items-center space-x-4">
                     <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
                       <img
@@ -269,7 +294,7 @@ function OrderSuccessContent() {
                 </div>
 
                 <div className="flex justify-between text-xl font-bold text-gray-900 border-t border-gray-200 pt-2">
-                  <span>Total Paid</span>
+                  <span>{isPaid ? 'Total Paid' : 'Total Due'}</span>
                   <span>{formatPrice(order.total)}</span>
                 </div>
               </div>

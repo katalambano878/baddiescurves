@@ -51,7 +51,7 @@ function mapProductCard(product: ProductRow) {
     reviewCount: product.review_count || 0,
     badge: product.compare_at_price > product.price ? 'Sale' : product.featured ? 'Featured' : undefined,
     inStock: effectiveStock > 0,
-    maxStock: effectiveStock || 50,
+    maxStock: effectiveStock > 0 ? effectiveStock : 0,
     moq: product.moq || 1,
     hasVariants,
     minVariantPrice: hasVariants ? minUsd : undefined,

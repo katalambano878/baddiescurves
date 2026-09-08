@@ -30,7 +30,7 @@ interface Order {
 }
 
 export default function OrderHistory() {
-  const { formatPrice } = useCurrency();
+  const { formatPrice, resolveAmount } = useCurrency();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState('');
@@ -110,7 +110,7 @@ export default function OrderHistory() {
         if (!item.productId) continue;
         const { data: product, error } = await supabase
           .from('products')
-          .select('id, slug, name, price, quantity, moq, status, product_images(url)')
+          .select('id, slug, name, price, price_ghs, quantity, moq, status, product_images(url)')
           .eq('id', item.productId)
           .single();
         if (error || !product) continue;
@@ -126,12 +126,12 @@ export default function OrderHistory() {
         addToCart({
           id: product.id,
           name: product.name || item.name,
-          price: asNumber(product.price, item.price),
+          price: resolveAmount(asNumber(product.price, item.price), product.price_ghs),
           image,
           quantity: Math.max(1, item.quantity),
           variant: item.variant || undefined,
           slug: product.slug || item.slug || product.id,
-          maxStock: Math.max(1, stock || item.quantity || 1),
+          maxStock: Math.max(0, stock),
           moq: asNumber(product.moq, 1) || 1,
         });
         added += 1;

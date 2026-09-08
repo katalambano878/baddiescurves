@@ -71,7 +71,7 @@ export default function ProductCard({
   reviewCount = 0,
   badge,
   inStock = true,
-  maxStock = 50,
+  maxStock,
   moq = 1,
   hasVariants = false,
   minVariantPrice,
@@ -81,7 +81,9 @@ export default function ProductCard({
   minVariantPrice_ghs
 }: ProductCardProps) {
   const { addToCart } = useCart();
-  const { formatPrice, formatComparePrice, formatEquivalents } = useCurrency();
+  const { formatPrice, formatComparePrice, formatEquivalents, resolveAmount } = useCurrency();
+  const cartMaxStock = Math.max(0, maxStock ?? 0);
+  const cartPrice = resolveAmount(price, price_ghs);
   const [activeColor, setActiveColor] = useState<string | null>(null);
   const displayPrice = hasVariants && minVariantPrice ? minVariantPrice : price;
   const discount = originalPrice ? Math.round((1 - displayPrice / originalPrice) * 100) : 0;
@@ -130,7 +132,7 @@ export default function ProductCard({
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  addToCart({ id, name, price, image, quantity: moq, slug, maxStock, moq });
+                  addToCart({ id, name, price: cartPrice, image, quantity: moq, slug, maxStock: cartMaxStock, moq });
                 }}
                 className="bg-white/95 backdrop-blur-2xl text-gray-900 border border-white/40 hover:bg-gray-900 hover:text-white hover:border-gray-900 px-6 py-3.5 rounded-full text-[10px] uppercase tracking-[0.2em] font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 flex items-center justify-center space-x-2 translate-y-4 group-hover:translate-y-0"
               >
@@ -200,7 +202,7 @@ export default function ProductCard({
             <button
               onClick={(e) => {
                 e.preventDefault();
-                addToCart({ id, name, price, image, quantity: moq, slug, maxStock, moq });
+                addToCart({ id, name, price: cartPrice, image, quantity: moq, slug, maxStock: cartMaxStock, moq });
               }}
               disabled={!inStock}
               className="w-full bg-gray-50/50 border border-gray-200 text-gray-900 py-2.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-semibold hover:bg-gray-100 active:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"

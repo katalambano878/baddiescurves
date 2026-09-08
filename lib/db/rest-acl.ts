@@ -193,6 +193,10 @@ export function authorizeRestAccess(opts: {
   }
 
   if (method === "POST") {
+    if (table === "store_modules") {
+      return { allow: false, status: 403, message: "Admin access required" };
+    }
+
     if (!PUBLIC_INSERT.has(table) && actor.kind !== "user") {
       return { allow: false, status: 401, message: "Authentication required" };
     }
@@ -221,6 +225,10 @@ export function authorizeRestAccess(opts: {
   }
 
   if (method === "PATCH" || method === "PUT") {
+    if (table === "store_modules") {
+      return { allow: false, status: 403, message: "Admin access required" };
+    }
+
     if (actor.kind !== "user") {
       return { allow: false, status: 401, message: "Authentication required" };
     }

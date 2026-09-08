@@ -250,6 +250,7 @@ export default function AdminLayout({
     { title: 'Reviews', icon: 'ri-chat-smile-2-line', path: '/admin/reviews' },
     { title: 'Inventory', icon: 'ri-stack-line', path: '/admin/inventory' },
     { title: 'Shipping', icon: 'ri-truck-line', path: '/admin/shipping' },
+    { title: 'Maintenance', icon: 'ri-tools-line', path: '/admin/maintenance' },
     { title: 'Analytics', icon: 'ri-bar-chart-line', path: '/admin/analytics' },
     { title: 'Coupons', icon: 'ri-coupon-2-line', path: '/admin/coupons' },
     {

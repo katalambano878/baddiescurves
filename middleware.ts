@@ -77,6 +77,35 @@ function countryFromHeaders(request: NextRequest): string | null {
   return null;
 }
 
+function isMaintenanceExempt(pathname: string): boolean {
+  return (
+    pathname === '/maintenance' ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/rest/') ||
+    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/storage/') ||
+    pathname.startsWith('/_next')
+  );
+}
+
+async function isMaintenanceEnabled(request: NextRequest): Promise<boolean> {
+  try {
+    const statusUrl = new URL('/api/site/status', request.url);
+    const res = await fetch(statusUrl, {
+      headers: { Accept: 'application/json' },
+      // Next middleware fetch — short timeout via AbortSignal
+      signal: AbortSignal.timeout(2500),
+      cache: 'no-store',
+    });
+    if (!res.ok) return false;
+    const json = await res.json();
+    return Boolean(json?.enabled);
+  } catch {
+    return false;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
@@ -100,7 +129,8 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/api/payment/') ||
     pathname.startsWith('/api/health') ||
-    pathname.startsWith('/api/cron/')
+    pathname.startsWith('/api/cron/') ||
+    pathname.startsWith('/api/site/')
   ) {
     response.headers.set('Cache-Control', 'no-store');
     return response;
@@ -169,7 +199,20 @@ export async function middleware(request: NextRequest) {
         response.headers.set('x-user-role', profile.role);
       } catch (err) {
         console.error('[Middleware] Auth check error:', err);
+        // Fail closed for admin routes
+        const loginUrl = new URL('/admin/login', request.url);
+        loginUrl.searchParams.set('error', 'session_expired');
+        return NextResponse.redirect(loginUrl);
       }
+    }
+  }
+
+  // Maintenance gate for storefront (admins + APIs exempt)
+  if (!isMaintenanceExempt(pathname)) {
+    const enabled = await isMaintenanceEnabled(request);
+    if (enabled) {
+      const maintUrl = new URL('/maintenance', request.url);
+      return NextResponse.redirect(maintUrl);
     }
   }
 

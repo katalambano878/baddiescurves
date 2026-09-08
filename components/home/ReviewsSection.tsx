@@ -63,6 +63,7 @@ export default function ReviewsSection() {
               product_images (url)
             )
           `)
+          .eq('status', 'approved')
           .order('created_at', { ascending: false })
           .limit(24);
 

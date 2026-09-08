@@ -46,7 +46,7 @@ function formatShopProduct(p: any) {
     reviewCount: 0,
     badge: p.compare_at_price > p.price ? 'Sale' : undefined,
     inStock: effectiveStock > 0,
-    maxStock: effectiveStock || 50,
+    maxStock: effectiveStock > 0 ? effectiveStock : 0,
     moq: p.moq || 1,
     category: p.categories?.name,
     hasVariants,
@@ -64,6 +64,7 @@ function ShopContent() {
   // State
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([{ id: 'all', name: 'All Products', count: 0 }]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -104,6 +105,8 @@ function ShopContent() {
         }
       } catch (err) {
         console.error('Error fetching categories:', err);
+      } finally {
+        setCategoriesLoaded(true);
       }
     }
     fetchCategories();
@@ -115,8 +118,8 @@ function ShopContent() {
     let cancelled = false;
 
     async function fetchProducts() {
-      // Wait for categories list before filtering by slug (avoids empty race)
-      if (selectedCategory !== 'all' && categories.length <= 1) {
+      // Wait for categories fetch before filtering by slug (avoids empty race)
+      if (selectedCategory !== 'all' && !categoriesLoaded) {
         setLoading(true);
         return;
       }
@@ -157,6 +160,9 @@ function ShopContent() {
             setProducts([]);
             setTotalProducts(0);
             setHasMore(false);
+            setLoading(false);
+            setLoadingMore(false);
+            fetchingRef.current = false;
             return;
           }
 
@@ -232,7 +238,7 @@ function ShopContent() {
     return () => {
       cancelled = true;
     };
-  }, [selectedCategory, priceRange, selectedRating, sortBy, page, searchParams, categories]);
+  }, [selectedCategory, priceRange, selectedRating, sortBy, page, searchParams, categories, categoriesLoaded]);
 
   // Infinite scroll sentinel
   useEffect(() => {

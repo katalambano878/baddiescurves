@@ -77,7 +77,7 @@ export default function Home() {
           .eq('status', 'active')
           .eq('featured', true)
           .order('created_at', { ascending: false })
-          .limit(48);
+          .limit(12);
 
         if (productsError) {
           logSupabaseError('Failed to fetch featured products', productsError);

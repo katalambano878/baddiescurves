@@ -679,6 +679,48 @@ img {
   animation: progress linear;
 }
 
+/* ========================================
+   ANNOUNCEMENT MARQUEE
+   ======================================== */
+
+@keyframes announcementMarquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.announcement-marquee {
+  width: max-content;
+  animation: announcementMarquee 40s linear infinite;
+}
+
+.announcement-marquee:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announcement-marquee {
+    animation: none;
+    transform: none;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    white-space: normal;
+    gap: 0.5rem 1.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .announcement-marquee > span:nth-child(n + 6) {
+    display: none;
+  }
+}
+
+
 .vertical-text {
   writing-mode: vertical-rl;
   text-orientation: mixed;

@@ -56,6 +56,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
           .from('reviews')
           .select('*')
           .eq('product_id', productId)
+          .eq('status', 'approved')
           .order('created_at', { ascending: false })) as any,
         5 * 60 * 1000
       );

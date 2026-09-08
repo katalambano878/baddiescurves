@@ -270,7 +270,7 @@ export default function CheckoutPage() {
             throw new Error(paymentResult.message || 'Payment initialization failed');
           }
 
-          clearCart();
+          // Keep cart until payment succeeds (cleared on order-success when paid)
           window.location.href = paymentResult.url;
           return;
         } catch (paymentErr: any) {

@@ -45,7 +45,7 @@ function mapProductCard(product: any) {
     reviewCount: product.review_count || 0,
     badge: 'New',
     inStock: effectiveStock > 0,
-    maxStock: effectiveStock || 50,
+    maxStock: effectiveStock > 0 ? effectiveStock : 0,
     moq: product.moq || 1,
     hasVariants,
     minVariantPrice: hasVariants ? minUsd : undefined,
@@ -109,7 +109,7 @@ export default function NewArrivalsSection() {
             </p>
           </div>
           <Link
-            href="/shop?sort=newest"
+            href="/shop?sort=new"
             className="inline-flex items-center gap-2 self-start sm:self-auto bg-gray-900 text-white px-7 py-3 rounded-full text-sm font-semibold hover:bg-blue-800 transition-colors"
           >
             View All <i className="ri-arrow-right-line" />

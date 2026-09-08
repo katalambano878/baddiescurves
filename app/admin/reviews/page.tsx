@@ -18,7 +18,7 @@ export default function AdminReviewsPage() {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('reviews')
         .select(`
           *,
@@ -27,11 +27,27 @@ export default function AdminReviewsPage() {
         `)
         .order('created_at', { ascending: false });
 
+      // Fallback without nested product images / profile embed
       if (error) {
-        // Graceful fallback if table doesn't exist or permissions fail
+        console.warn('Reviews nested fetch failed, retrying simpler query:', error);
+        const plain = await supabase
+          .from('reviews')
+          .select(`
+            *,
+            products:product_id (name)
+          `)
+          .order('created_at', { ascending: false });
+        data = plain.data;
+        error = plain.error;
+      }
+
+      if (error) {
         console.warn('Error fetching reviews:', error);
-        // setReviews([]); // Keep empty
-      } else if (data) {
+        setReviews([]);
+        return;
+      }
+
+      if (data) {
         const formatted = data.map((r: any) => ({
           id: r.id,
           customer: {
@@ -41,7 +57,9 @@ export default function AdminReviewsPage() {
           },
           product: {
             name: r.products?.name || 'Unknown Product',
-            image: r.products?.product_images?.[0]?.url || 'https://via.placeholder.com/150'
+            image: Array.isArray(r.products?.product_images)
+              ? r.products.product_images[0]?.url
+              : r.products?.product_images?.url || 'https://via.placeholder.com/150'
           },
           rating: r.rating,
           title: r.title,
@@ -54,6 +72,7 @@ export default function AdminReviewsPage() {
       }
     } catch (error) {
       console.error('Error fetching reviews:', error);
+      setReviews([]);
     } finally {
       setLoading(false);
     }

@@ -80,14 +80,22 @@ export default function AnalyticsPage() {
             unit_price, 
             total_price,
             product_id,
-            products!inner(name, category_id, categories(name))
+            product_name,
+            products(name, category_id, categories(name))
           `)
           .in('order_id', orderIds);
 
         if (itemFetchError) {
           console.error('Error fetching order items:', itemFetchError);
+          // Fallback without category embed
+          const plain = await supabase
+            .from('order_items')
+            .select('quantity, unit_price, total_price, product_id, product_name')
+            .in('order_id', orderIds);
+          if (plain.data) validItems = plain.data;
+        } else if (fetchedItems) {
+          validItems = fetchedItems;
         }
-        if (fetchedItems) validItems = fetchedItems;
       }
 
       // Process Metrics
@@ -136,7 +144,8 @@ export default function AnalyticsPage() {
       // Process Category Revenue
       const catMap: Record<string, any> = {};
       validItems.forEach(item => {
-        const catName = item.products?.categories?.name || 'Uncategorized';
+        const cat = item.products?.categories;
+        const catName = (Array.isArray(cat) ? cat[0]?.name : cat?.name) || 'Uncategorized';
         if (!catMap[catName]) catMap[catName] = { name: catName, value: 0 };
         // Use total_price if available, otherwise calculate from unit_price * quantity
         const itemRevenue = item.total_price || (item.unit_price * item.quantity) || 0;
@@ -149,7 +158,7 @@ export default function AnalyticsPage() {
       // Process Top Products
       const prodMap: Record<string, any> = {};
       validItems.forEach(item => {
-        const pName = item.products?.name || 'Unknown';
+        const pName = item.products?.name || item.product_name || 'Unknown';
         if (!prodMap[pName]) prodMap[pName] = { name: pName, revenue: 0, units: 0 };
         const itemRevenue = item.total_price || (item.unit_price * item.quantity) || 0;
         prodMap[pName].revenue += itemRevenue;

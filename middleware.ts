@@ -90,20 +90,30 @@ function isMaintenanceExempt(pathname: string): boolean {
 }
 
 async function isMaintenanceEnabled(request: NextRequest): Promise<boolean> {
-  try {
-    const statusUrl = new URL('/api/site/status', request.url);
-    const res = await fetch(statusUrl, {
-      headers: { Accept: 'application/json' },
-      // Next middleware fetch — short timeout via AbortSignal
-      signal: AbortSignal.timeout(2500),
-      cache: 'no-store',
-    });
-    if (!res.ok) return false;
-    const json = await res.json();
-    return Boolean(json?.enabled);
-  } catch {
-    return false;
+  // Prefer loopback: fetching the public FQDN from inside Coolify/Docker
+  // often hairpins/times out, and we fail-open to "off" which leaves the shop live.
+  const port = process.env.PORT || '3000';
+  const candidates = [
+    `http://127.0.0.1:${port}/api/site/status`,
+    `http://localhost:${port}/api/site/status`,
+    new URL('/api/site/status', request.url).toString(),
+  ];
+
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(2000),
+        cache: 'no-store',
+      });
+      if (!res.ok) continue;
+      const json = await res.json();
+      return Boolean(json?.enabled);
+    } catch {
+      // try next candidate
+    }
   }
+  return false;
 }
 
 export async function middleware(request: NextRequest) {
@@ -207,12 +217,15 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Maintenance gate for storefront (admins + APIs exempt)
+  // Maintenance gate for storefront (admins + APIs exempt).
+  // Note: Edge self-fetch can fail open; app/(store)/template.tsx is the reliable DB gate.
   if (!isMaintenanceExempt(pathname)) {
     const enabled = await isMaintenanceEnabled(request);
     if (enabled) {
       const maintUrl = new URL('/maintenance', request.url);
-      return NextResponse.redirect(maintUrl);
+      const redirect = NextResponse.redirect(maintUrl);
+      redirect.headers.set('Cache-Control', 'no-store, must-revalidate');
+      return redirect;
     }
   }
 

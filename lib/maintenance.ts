@@ -1,3 +1,5 @@
+import { getPool } from '@/lib/db/pool';
+
 export type MaintenanceConfig = {
   enabled: boolean;
   message: string;
@@ -29,4 +31,18 @@ export function normalizeMaintenance(raw: unknown): MaintenanceConfig {
           ? Math.max(0, Math.round(Number(minutes)))
           : DEFAULT_MAINTENANCE.estimatedMinutes,
   };
+}
+
+/** Node/server only — do not import from Edge middleware. */
+export async function getMaintenanceConfig(): Promise<MaintenanceConfig> {
+  try {
+    const pool = getPool();
+    const res = await pool.query(
+      `SELECT value FROM site_settings WHERE key = $1 LIMIT 1`,
+      [MAINTENANCE_SETTINGS_KEY]
+    );
+    return normalizeMaintenance(res.rows[0]?.value);
+  } catch {
+    return { ...DEFAULT_MAINTENANCE, enabled: false };
+  }
 }

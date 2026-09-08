@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { verifyAuth } from '@/lib/auth';
 import { getPool } from '@/lib/db/pool';
 import {
@@ -60,6 +61,10 @@ export async function PUT(req: NextRequest) {
              updated_at = now()`,
       [MAINTENANCE_SETTINGS_KEY, JSON.stringify(config)]
     );
+
+    // Bust full-route cache so storefront picks up the toggle immediately.
+    revalidatePath('/', 'layout');
+    revalidatePath('/maintenance');
 
     return NextResponse.json({ success: true, ...config });
   } catch (err: any) {

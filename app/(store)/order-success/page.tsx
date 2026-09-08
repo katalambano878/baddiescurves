@@ -112,6 +112,10 @@ function OrderSuccessContent() {
     }
   };
 
+  useEffect(() => {
+    if (order?.payment_status === 'paid') clearCart();
+  }, [order?.payment_status, clearCart]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -144,10 +148,6 @@ function OrderSuccessContent() {
   const isPaid = order.payment_status === 'paid';
   const pointsEarned = Math.floor(order.total / 10);
   const payUrl = `/pay/${order.order_number || order.id}`;
-
-  useEffect(() => {
-    if (isPaid) clearCart();
-  }, [isPaid, clearCart]);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">

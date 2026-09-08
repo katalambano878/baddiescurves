@@ -1,4 +1,5 @@
-import { connection, redirect } from 'next/server';
+import { connection } from 'next/server';
+import { redirect } from 'next/navigation';
 import { getMaintenanceConfig } from '@/lib/maintenance';
 
 /**

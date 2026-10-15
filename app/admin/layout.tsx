@@ -267,6 +267,7 @@ export default function AdminLayout({
     },
     { title: 'SMS Debugger', icon: 'ri-message-2-line', path: '/admin/test-sms' },
     { title: 'Blog', icon: 'ri-article-line', path: '/admin/blog', moduleId: 'blog' },
+    { title: 'Buy SMS', icon: 'ri-message-2-line', path: '/admin/sms-credit' },
     { title: 'Modules', icon: 'ri-puzzle-line', path: '/admin/modules' },
   ];
 

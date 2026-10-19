@@ -244,6 +244,7 @@ export default function AdminLayout({
     { title: 'Dashboard', icon: 'ri-dashboard-line', path: '/admin', exact: true },
     { title: 'Orders', icon: 'ri-shopping-bag-line', path: '/admin/orders', badge: '' },
     { title: 'POS System', icon: 'ri-store-3-line', path: '/admin/pos' },
+    { title: 'Buy SMS', icon: 'ri-message-2-line', path: '/admin/sms-credit' },
     { title: 'Products', icon: 'ri-box-3-line', path: '/admin/products' },
     { title: 'Categories', icon: 'ri-folder-line', path: '/admin/categories' },
     { title: 'Customers', icon: 'ri-group-line', path: '/admin/customers' },
@@ -267,7 +268,6 @@ export default function AdminLayout({
     },
     { title: 'SMS Debugger', icon: 'ri-message-2-line', path: '/admin/test-sms' },
     { title: 'Blog', icon: 'ri-article-line', path: '/admin/blog', moduleId: 'blog' },
-    { title: 'Buy SMS', icon: 'ri-message-2-line', path: '/admin/sms-credit' },
     { title: 'Modules', icon: 'ri-puzzle-line', path: '/admin/modules' },
   ];
 

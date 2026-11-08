@@ -157,6 +157,7 @@ export default function Footer() {
               </Link>{' '}
               {siteName}. All rights reserved.
             </p>
+            <p>Powered by <a href="https://doctorbarns.com" target="_blank" rel="noopener" className="text-gray-500 hover:text-white hover:underline transition-colors">Doctor Barns Tech</a></p>
             <div className="flex gap-5 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
               <i className="ri-visa-line text-3xl"></i>
               <i className="ri-mastercard-line text-3xl"></i>

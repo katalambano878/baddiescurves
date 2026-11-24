@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { fetchJsonWithTimeout } from '@/lib/with-timeout';
-import { SmsCreditDashboardCard } from '@/components/admin/SmsCreditDashboardCard';
 import type { DashboardSmsCredit } from '@/lib/sms-credit-types';
 
 const RevenueChart = dynamic(() => import('@/components/admin/RevenueChart'), {
@@ -288,8 +287,7 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
               <p className="text-gray-600 text-sm">{stat.title}</p>
             </div>
           ))}
-          <SmsCreditDashboardCard smsCredit={smsCredit} />
-        </div>
+</div>
 
         <div className="grid lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-200">

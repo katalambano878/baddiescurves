@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { clearAuthCookies, setAuthCookies } from '@/lib/auth-cookies';
 import { withTimeout, TimeoutError } from '@/lib/with-timeout';
+import { SmsCreditDashboardCard } from '@/components/admin/SmsCreditDashboardCard';
 
 const AUTH_TIMEOUT_MS = 12_000;
 
@@ -403,6 +404,7 @@ export default function AdminLayout({
           </div>
         </header>
 
+        <SmsCreditDashboardCard />
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>

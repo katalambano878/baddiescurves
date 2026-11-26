@@ -2,7 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
-import { randomUUID } from "crypto";
+import { createHash, randomBytes, randomUUID } from "crypto";
 import { query } from "./pool";
 import { authJwtSecret } from "./mode";
 
@@ -283,20 +283,125 @@ export async function updateUserMetadata(
      WHERE id = $2`,
     [JSON.stringify(data), userId]
   );
-  if (typeof data.full_name === "string" || typeof data.phone === "string") {
+  // Keep the customer's profile row in step with what they saved: the account
+  // page sends first_name / last_name / phone, and admin screens read profiles.
+  const nameParts = [data.first_name, data.last_name]
+    .filter((part): part is string => typeof part === "string")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const fullName =
+    typeof data.full_name === "string"
+      ? data.full_name
+      : nameParts.length > 0
+        ? nameParts.join(" ")
+        : null;
+  const phone = typeof data.phone === "string" ? data.phone.trim() : null;
+  if (fullName !== null || phone !== null) {
     await query(
-      `UPDATE profiles SET
-         full_name = COALESCE($1, full_name),
-         phone = COALESCE($2, phone),
-         updated_at = now()
-       WHERE id = $3`,
-      [
-        typeof data.full_name === "string" ? data.full_name : null,
-        typeof data.phone === "string" ? data.phone : null,
-        userId,
-      ]
+      `INSERT INTO profiles (id, email, full_name, phone, role, created_at, updated_at)
+       SELECT u.id, u.email, $1::text, $2::text, 'customer', now(), now()
+       FROM auth.users u WHERE u.id = $3
+       ON CONFLICT (id) DO UPDATE SET
+         full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
+         phone = COALESCE(EXCLUDED.phone, profiles.phone),
+         updated_at = now()`,
+      [fullName, phone, userId]
     ).catch(() => {});
   }
   const user = await getUserById(userId);
   return { user, error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Password recovery
+// ---------------------------------------------------------------------------
+
+/** Same rule the signup page enforces. */
+export const MIN_PASSWORD_LENGTH = 8;
+/** How long an emailed reset link stays valid. */
+export const RECOVERY_TTL_MINUTES = 60;
+
+function hashRecoveryToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+/**
+ * Start a password reset. Returns the raw token (to email) only when the
+ * account exists; only the SHA-256 hash is stored. Asking again replaces the
+ * previous link.
+ */
+export async function createRecoveryToken(
+  email: string
+): Promise<{ token: string; email: string; firstName: string | null } | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const token = randomBytes(32).toString("hex");
+  const { rows } = await query(
+    `UPDATE auth.users
+     SET recovery_token = $1, recovery_sent_at = now()
+     WHERE id = (
+       SELECT id FROM auth.users
+       WHERE lower(email) = $2 AND deleted_at IS NULL
+       ORDER BY created_at
+       LIMIT 1
+     )
+     RETURNING email, raw_user_meta_data`,
+    [hashRecoveryToken(token), normalized]
+  );
+  const row = rows[0];
+  if (!row?.email) return null;
+
+  const meta =
+    typeof row.raw_user_meta_data === "string"
+      ? JSON.parse(row.raw_user_meta_data || "{}")
+      : row.raw_user_meta_data || {};
+  const firstName =
+    typeof meta.first_name === "string" && meta.first_name.trim()
+      ? meta.first_name.trim()
+      : null;
+  return { token, email: row.email, firstName };
+}
+
+export type ResetPasswordResult =
+  | { ok: true }
+  | { ok: false; reason: "weak_password" | "invalid_token" | "expired_token" };
+
+/**
+ * Finish a password reset. The token is single-use: it is cleared in the same
+ * statement that reads it, so two requests with the same link cannot both win.
+ */
+export async function resetPasswordWithToken(
+  token: string,
+  password: string
+): Promise<ResetPasswordResult> {
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, reason: "weak_password" };
+  }
+  if (!/^[a-f0-9]{64}$/.test(token)) {
+    return { ok: false, reason: "invalid_token" };
+  }
+
+  const { rows } = await query<{ id: string; fresh: boolean }>(
+    `WITH claimed AS (
+       SELECT id, recovery_sent_at
+       FROM auth.users
+       WHERE recovery_token = $1 AND deleted_at IS NULL
+       FOR UPDATE
+     )
+     UPDATE auth.users u
+     SET recovery_token = '', recovery_sent_at = NULL
+     FROM claimed c
+     WHERE u.id = c.id
+     RETURNING u.id,
+       COALESCE(c.recovery_sent_at > now() - make_interval(mins => $2::int), false) AS fresh`,
+    [hashRecoveryToken(token), RECOVERY_TTL_MINUTES]
+  );
+  const row = rows[0];
+  if (!row) return { ok: false, reason: "invalid_token" };
+  if (!row.fresh) return { ok: false, reason: "expired_token" };
+
+  const { error } = await updateUserPassword(row.id, password);
+  if (error) return { ok: false, reason: "weak_password" };
+  return { ok: true };
 }

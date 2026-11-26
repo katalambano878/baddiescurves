@@ -49,15 +49,30 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
 
   const fetchReviews = async () => {
     try {
-      // Fetch approved reviews (cached for 5 minutes)
+      // Fetch approved reviews (cached for 5 minutes). The storefront route adds
+      // the reviewer's first name; if it is unavailable, read the reviews
+      // directly (no names).
         const { data, error } = await cachedQuery<{ data: any; error: any }>(
         `reviews:${productId}`,
-        (() => supabase
-          .from('reviews')
-          .select('*')
-          .eq('product_id', productId)
-          .eq('status', 'approved')
-          .order('created_at', { ascending: false })) as any,
+        async () => {
+          try {
+            const res = await fetch(`/api/storefront/reviews?product_id=${encodeURIComponent(productId)}`);
+            if (res.ok) {
+              const json = await res.json();
+              if (Array.isArray(json?.reviews)) {
+                return { data: json.reviews.map((r: any) => ({ ...r, status: 'approved' })), error: null };
+              }
+            }
+          } catch {
+            // fall through to the direct query
+          }
+          return (await supabase
+            .from('reviews')
+            .select('*')
+            .eq('product_id', productId)
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false })) as { data: any; error: any };
+        },
         5 * 60 * 1000
       );
 
@@ -70,10 +85,10 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
 
         const formattedReviews = approvedRows.map((r: any) => ({
           id: r.id,
-          author: 'Verified Customer',
+          author: typeof r.first_name === 'string' && r.first_name.trim() ? r.first_name.trim() : 'Customer',
           rating: r.rating,
           date: r.created_at,
-          verified: r.verified_purchase,
+          verified: r.verified_purchase === true,
           title: r.title,
           content: r.content,
           helpful: r.helpful_votes || 0,
@@ -313,7 +328,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 flex items-center justify-center bg-blue-100 rounded-full text-blue-700 font-bold text-lg">
-                  {review.author.charAt(0)}
+                  {review.author.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
@@ -321,7 +336,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
                     {review.verified && (
                       <span className="flex items-center text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded">
                         <i className="ri-checkbox-circle-fill mr-1"></i>
-                        Verified Must Have
+                        Verified purchase
                       </span>
                     )}
                   </div>
@@ -341,14 +356,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
             </div>
 
             <h4 className="font-semibold text-gray-900 mb-2">{review.title}</h4>
-            <p className="text-gray-700 mb-4">{review.content}</p>
-
-            <div className="flex items-center space-x-4 text-sm">
-              <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-700 transition-colors">
-                <i className="ri-thumb-up-line"></i>
-                <span>Helpful ({review.helpful})</span>
-              </button>
-            </div>
+            <p className="text-gray-700">{review.content}</p>
           </div>
         ))}
       </div>

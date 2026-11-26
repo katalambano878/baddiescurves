@@ -4,10 +4,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import ProductCard, { type ColorVariant, getColorHex } from '@/components/ProductCard';
+import ProductCard, { mapProductToCard } from '@/components/ProductCard';
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton';
 import AnimatedSection, { AnimatedGrid } from '@/components/AnimatedSection';
-import { minVariantPrices } from '@/lib/currency';
 
 type CategoryTab = {
   id: string;
@@ -17,48 +16,8 @@ type CategoryTab = {
 
 type ProductRow = any;
 
-function mapProductCard(product: ProductRow) {
-  const variants = product.product_variants || [];
-  const hasVariants = variants.length > 0;
-  const { minUsd, minGhs } = minVariantPrices(variants, product.price, product.price_ghs);
-  const totalVariantStock = hasVariants
-    ? variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0)
-    : 0;
-  const effectiveStock = hasVariants ? totalVariantStock : product.quantity;
-
-  const colorVariants: ColorVariant[] = [];
-  const seenColors = new Set<string>();
-  for (const v of variants) {
-    const colorName = v.option2;
-    if (colorName && !seenColors.has(colorName.toLowerCase().trim())) {
-      const hex = getColorHex(colorName);
-      if (hex) {
-        seenColors.add(colorName.toLowerCase().trim());
-        colorVariants.push({ name: colorName.trim(), hex });
-      }
-    }
-  }
-
-  return {
-    id: product.id,
-    slug: product.slug,
-    name: product.name,
-    price: product.price,
-    price_ghs: product.price_ghs,
-    originalPrice: product.compare_at_price,
-    image: product.product_images?.[0]?.url || 'https://via.placeholder.com/400x500',
-    rating: product.rating_avg || 5,
-    reviewCount: product.review_count || 0,
-    badge: product.compare_at_price > product.price ? 'Sale' : product.featured ? 'Featured' : undefined,
-    inStock: effectiveStock > 0,
-    maxStock: effectiveStock > 0 ? effectiveStock : 0,
-    moq: product.moq || 1,
-    hasVariants,
-    minVariantPrice: hasVariants ? minUsd : undefined,
-    minVariantPrice_ghs: hasVariants ? minGhs : product.price_ghs,
-    colorVariants,
-  };
-}
+const mapProductCard = (product: ProductRow) =>
+  mapProductToCard(product, { badge: product.featured ? 'Featured' : undefined });
 
 interface BestSellersSectionProps {
   products: ProductRow[];

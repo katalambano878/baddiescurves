@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { asNumber } from '@/lib/format-money';
 import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/lib/currency';
+import { formatMoney } from '@/lib/format-money';
 import { useCart } from '@/context/CartContext';
 
 interface OrderItem {
@@ -16,6 +17,7 @@ interface OrderItem {
   quantity: number;
   price: number;
   variant?: string | null;
+  variantId?: string | null;
   slug?: string;
 }
 
@@ -26,6 +28,7 @@ interface Order {
   date: string;
   status: string;
   total: number;
+  currency: string;
   items: OrderItem[];
 }
 
@@ -64,6 +67,7 @@ export default function OrderHistory() {
             date: order.created_at,
             status: order.status,
             total: asNumber(order.total),
+            currency: order.currency || 'GHS',
             items: order.order_items.map((item: any) => ({
               id: item.id,
               productId: item.product_id || null,
@@ -72,6 +76,7 @@ export default function OrderHistory() {
               quantity: item.quantity,
               price: asNumber(item.unit_price),
               variant: item.variant_name || null,
+              variantId: item.variant_id || null,
               slug: item.metadata?.slug || '',
             })),
           }));
@@ -130,8 +135,10 @@ export default function OrderHistory() {
           image,
           quantity: Math.max(1, item.quantity),
           variant: item.variant || undefined,
+          variantId: item.variantId || null,
           slug: product.slug || item.slug || product.id,
-          maxStock: Math.max(0, stock),
+          // The cart re-checks price and stock with the server right after this.
+          maxStock: Math.max(item.quantity, stock),
           moq: asNumber(product.moq, 1) || 1,
         });
         added += 1;
@@ -212,7 +219,7 @@ export default function OrderHistory() {
                   </div>
                   <div className="w-full sm:w-auto">
                     <p className="text-xs text-gray-600 mb-1">Total</p>
-                    <p className="font-bold text-blue-700">{formatPrice(order.total)}</p>
+                    <p className="font-bold text-blue-700">{formatMoney(order.total, order.currency)}</p>
                   </div>
                 </div>
                 <div className="w-full sm:w-auto">
@@ -237,7 +244,7 @@ export default function OrderHistory() {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-gray-900 mb-1">{item.name}</h4>
                       <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                      <p className="text-sm font-bold text-gray-900 mt-1">{formatPrice(item.price)}</p>
+                      <p className="text-sm font-bold text-gray-900 mt-1">{formatMoney(item.price, order.currency)}</p>
                     </div>
                   </div>
                 ))}

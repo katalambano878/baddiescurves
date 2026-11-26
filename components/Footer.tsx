@@ -62,16 +62,17 @@ export default function Footer() {
 
               <div className="flex gap-4 pt-4">
                 {[
-                  { link: socialInstagram, icon: 'ri-instagram-line' },
-                  { link: socialTiktok, icon: 'ri-tiktok-fill' },
-                  { link: socialSnapchat, icon: 'ri-snapchat-fill' },
-                  { link: socialYoutube, icon: 'ri-youtube-fill' },
-                  { link: socialTwitter, icon: 'ri-twitter-x-fill' },
-                  { link: socialFacebook, icon: 'ri-facebook-fill' }
+                  { link: socialInstagram, icon: 'ri-instagram-line', label: 'Instagram' },
+                  { link: socialTiktok, icon: 'ri-tiktok-fill', label: 'TikTok' },
+                  { link: socialSnapchat, icon: 'ri-snapchat-fill', label: 'Snapchat' },
+                  { link: socialYoutube, icon: 'ri-youtube-fill', label: 'YouTube' },
+                  { link: socialTwitter, icon: 'ri-twitter-x-fill', label: 'X' },
+                  { link: socialFacebook, icon: 'ri-facebook-fill', label: 'Facebook' }
                 ].map((social, i) => social.link && (
                   <a
                     key={i}
                     href={social.link}
+                    aria-label={`${siteName} on ${social.label}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-11 h-11 bg-white/[0.03] border border-white/10 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/20 hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
@@ -95,11 +96,11 @@ export default function Footer() {
                     Collections
                     <span className="absolute -bottom-1 left-0 w-0 h-px bg-white/40 transition-all duration-300 group-hover:w-full"></span>
                   </Link></li>
-                  <li><Link href="/shop?sort=newest" className="relative group inline-block hover:text-white transition-colors duration-300">
+                  <li><Link href="/shop?sort=new" className="relative group inline-block hover:text-white transition-colors duration-300">
                     New Arrivals
                     <span className="absolute -bottom-1 left-0 w-0 h-px bg-white/40 transition-all duration-300 group-hover:w-full"></span>
                   </Link></li>
-                  <li><Link href="/shop?sort=bestsellers" className="relative group inline-block hover:text-white transition-colors duration-300">
+                  <li><Link href="/shop?sort=popular" className="relative group inline-block hover:text-white transition-colors duration-300">
                     Best Sellers
                     <span className="absolute -bottom-1 left-0 w-0 h-px bg-white/40 transition-all duration-300 group-hover:w-full"></span>
                   </Link></li>

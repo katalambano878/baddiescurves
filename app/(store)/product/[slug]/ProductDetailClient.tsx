@@ -5,13 +5,14 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { cachedQuery } from '@/lib/query-cache';
-import ProductCard from '@/components/ProductCard';
+import ProductCard, { mapProductToCard, PRODUCT_PLACEHOLDER_IMAGE } from '@/components/ProductCard';
 import ProductReviews from '@/components/ProductReviews';
 import { StructuredData, generateProductSchema, generateBreadcrumbSchema } from '@/components/SEOHead';
-import { notFound } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { minVariantPrices, useCurrency } from '@/lib/currency';
+import { useWishlist } from '@/context/WishlistContext';
+import { listingPrices, wasPrice, useCurrency } from '@/lib/currency';
 
 // Map common color names to hex values for the swatch preview
 function colorNameToHex(name: string): string {
@@ -38,10 +39,11 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
 
   const { addToCart } = useCart();
+  const router = useRouter();
   const { formatPrice, formatComparePrice, formatEquivalents, resolveAmount, isGhana } = useCurrency();
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
               .from('products')
               .select(`
                 *,
-                categories(name),
+                categories(name, slug),
                 product_variants(*),
                 product_images(url, position, alt_text)
               `);
@@ -110,15 +112,18 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
           colorHexMap,
           variants: rawVariants,
           sizes: rawVariants.map((v: any) => v.name) || [],
-          features: ['Premium Quality', 'Authentic Design'],
-          featured: ['Premium Quality', 'Authentic Design'],
-          care: 'Handle with care.',
+          // Features / Care tabs only show when the product has its own text
+          // (products.metadata.features: string[], products.metadata.care: string).
+          features: Array.isArray(productData.metadata?.features)
+            ? productData.metadata.features.filter((f: unknown) => typeof f === 'string' && f.trim())
+            : [],
+          care: typeof productData.metadata?.care === 'string' ? productData.metadata.care.trim() : '',
           preorderShipping: productData.metadata?.preorder_shipping || null
         };
 
         // Ensure at least one image/placeholder
         if (transformedProduct.images.length === 0) {
-          transformedProduct.images = ['https://via.placeholder.com/800x800?text=No+Image'];
+          transformedProduct.images = [PRODUCT_PLACEHOLDER_IMAGE];
         }
 
         setProduct(transformedProduct);
@@ -140,7 +145,8 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
             `related:${productData.category_id}:${productData.id}`,
             (() => supabase
               .from('products')
-              .select('*, product_images(url, position), product_variants(id, name, price, price_ghs, quantity)')
+              .select('*, product_images(url, position), product_variants(id, name, price, price_ghs, compare_at_price, compare_at_price_ghs, quantity, option2)')
+              .eq('status', 'active')
               .eq('category_id', productData.category_id)
               .neq('id', productData.id)
               .limit(4)) as any,
@@ -148,29 +154,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
           );
 
           if (related) {
-            setRelatedProducts(related.map((p: any) => {
-              const variants = p.product_variants || [];
-              const hasVariants = variants.length > 0;
-              const { minUsd, minGhs } = minVariantPrices(variants, p.price, p.price_ghs);
-              const totalVariantStock = hasVariants ? variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0) : 0;
-              const effectiveStock = hasVariants ? totalVariantStock : p.quantity;
-              return {
-                id: p.id,
-                slug: p.slug,
-                name: p.name,
-                price: p.price,
-                price_ghs: p.price_ghs,
-                image: p.product_images?.[0]?.url || 'https://via.placeholder.com/800?text=No+Image',
-                rating: p.rating_avg || 0,
-                reviewCount: 0,
-                inStock: effectiveStock > 0,
-                maxStock: effectiveStock > 0 ? effectiveStock : 0,
-                moq: p.moq || 1,
-                hasVariants,
-                minVariantPrice: hasVariants ? minUsd : undefined,
-                minVariantPrice_ghs: hasVariants ? minGhs : p.price_ghs,
-              };
-            }));
+            setRelatedProducts(related.map((p: any) => mapProductToCard(p)));
           }
         }
 
@@ -216,8 +200,10 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
 
     addToCart({
       id: product.id,
+      variantId: selectedVariant?.id ?? null,
       name: product.name,
       price: activePrice,
+      currency: isGhana ? 'GHS' : 'USD',
       image: product.images[0],
       quantity: quantity,
       variant: variantLabel,
@@ -229,7 +215,8 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
 
   const handleBuyNow = () => {
     handleAddToCart();
-    window.location.href = '/checkout';
+    // Client navigation keeps the cart that was just updated.
+    router.push('/checkout');
   };
 
   if (loading) {
@@ -254,14 +241,31 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
     );
   }
 
-  const discount = product.compare_at_price
-    ? Math.round((1 - activePriceUsd / product.compare_at_price) * 100)
-    : 0;
-  const { minUsd, minGhs } = minVariantPrices(
-    product.variants || [],
-    product.price,
-    product.price_ghs
-  );
+  const listing = listingPrices(product, product.variants || []);
+  const { minUsd, minGhs } = listing;
+  // The "was" price of what is on screen: the chosen variant, else the cheapest option.
+  const wasUsd = selectedVariant
+    ? selectedVariant.price != null
+      ? wasPrice(selectedVariant.price, selectedVariant.compare_at_price)
+      : wasPrice(product.price, product.compare_at_price)
+    : listing.wasUsd;
+  const wasGhs = selectedVariant
+    ? selectedVariant.price_ghs != null
+      ? wasPrice(selectedVariant.price_ghs, selectedVariant.compare_at_price_ghs)
+      : wasPrice(product.price_ghs, product.compare_at_price_ghs)
+    : listing.wasGhs;
+  const shownUsd = hasVariants && !selectedVariant ? minUsd : activePriceUsd;
+  const shownGhs = hasVariants && !selectedVariant ? minGhs : activeGhs;
+  // Work the discount out in the currency this visitor sees.
+  const inCedis = isGhana && shownGhs != null;
+  const shownNow = inCedis ? Number(shownGhs) : shownUsd;
+  const shownWas = inCedis ? wasGhs : wasUsd;
+  const discount =
+    shownWas != null && shownNow > 0 && shownWas > shownNow
+      ? Math.round((1 - shownNow / shownWas) * 100)
+      : 0;
+  // No price in this visitor's market (for example no dollar price set yet).
+  const unavailableHere = !(shownNow > 0);
 
   const productSchema = generateProductSchema({
     name: product.name,
@@ -276,7 +280,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
     category: product.category
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://example.com');
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://baddiecurves.com');
   const breadcrumbSchema = generateBreadcrumbSchema([
     { name: 'Home', url: baseUrl },
     { name: 'Shop', url: `${baseUrl}/shop` },
@@ -297,7 +301,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
               <i className="ri-arrow-right-s-line text-gray-400"></i>
               <Link href="/shop" className="text-gray-600 hover:text-blue-700 transition-colors">Shop</Link>
               <i className="ri-arrow-right-s-line text-gray-400"></i>
-              <Link href="#" className="text-gray-600 hover:text-blue-700 transition-colors">{product.category}</Link>
+              <Link href={product.categories?.slug ? `/shop?category=${encodeURIComponent(product.categories.slug)}` : '/shop'} className="text-gray-600 hover:text-blue-700 transition-colors">{product.category}</Link>
               <i className="ri-arrow-right-s-line text-gray-400"></i>
               <span className="text-gray-900 font-medium truncate max-w-[200px]">{product.name}</span>
             </nav>
@@ -354,16 +358,25 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                   <div className="flex items-start justify-between mb-3">
                     <p className="text-[11px] tracking-[0.2em] text-gray-500 uppercase font-bold">{product.category}</p>
                     <button
-                      onClick={() => setIsWishlisted(!isWishlisted)}
-                      className="group w-10 h-10 flex items-center justify-center bg-white border border-black/[0.04] hover:border-black/[0.08] rounded-full transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md"
+                      type="button"
+                      onClick={() =>
+                        isInWishlist(product.id)
+                          ? removeFromWishlist(product.id)
+                          : addToWishlist(mapProductToCard(product))
+                      }
+                      aria-pressed={isInWishlist(product.id)}
+                      aria-label={isInWishlist(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                      className="group w-11 h-11 flex-shrink-0 flex items-center justify-center bg-white border border-black/[0.04] hover:border-black/[0.08] rounded-full transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md"
                     >
-                      <i className={`${isWishlisted ? 'ri-heart-fill text-red-500 scale-110' : 'ri-heart-line text-gray-400 group-hover:text-gray-600'} text-lg transition-all`}></i>
+                      <i className={`${isInWishlist(product.id) ? 'ri-heart-fill text-red-500 scale-110' : 'ri-heart-line text-gray-400 group-hover:text-gray-600'} text-lg transition-all`}></i>
                     </button>
                   </div>
                   <h1 className="text-3xl md:text-4xl lg:text-[44px] font-serif font-medium text-gray-900 leading-[1.1] tracking-tight">{product.name}</h1>
                 </div>
 
-                <div className="flex items-center mb-7">
+                {/* No reviews yet: no stars, rather than a "0.0" rating. */}
+                {Number(product.review_count) > 0 && Number(product.rating) > 0 ? (
+                <div className="flex items-center mb-7" role="img" aria-label={`Rated ${Number(product.rating).toFixed(1)} out of 5`}>
                   <div className="flex items-center space-x-0.5 mr-3">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <i
@@ -374,9 +387,14 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                   </div>
                   <span className="text-gray-500 text-sm font-medium">{Number(product.rating).toFixed(1)}</span>
                 </div>
+                ) : (
+                  <div className="mb-3"></div>
+                )}
 
                 <div className="flex items-baseline space-x-3 mb-8">
-                  {hasVariants && !selectedVariant ? (
+                  {unavailableHere ? (
+                    <span className="text-lg font-medium text-gray-700">Not available in your region yet</span>
+                  ) : hasVariants && !selectedVariant ? (
                     <span className="text-2xl lg:text-[30px] font-medium text-gray-900">
                       <span className="text-lg text-gray-400 font-light mr-1.5">From</span>
                       {formatPrice(minUsd, minGhs)}
@@ -386,13 +404,13 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                       {formatPrice(activeUsd, activeGhs)}
                     </span>
                   )}
-                  {product.compare_at_price && product.compare_at_price > activePriceUsd && (
-                    <span className="text-lg text-gray-400 line-through decoration-gray-300">
-                      {formatComparePrice(product.compare_at_price, product.compare_at_price_ghs)}
+                  {discount > 0 && (
+                    <span className="text-lg text-gray-500 line-through decoration-gray-400">
+                      {formatComparePrice(wasUsd ?? 0, wasGhs)}
                     </span>
                   )}
                 </div>
-                {formatEquivalents(activePriceUsd) && (
+                {!unavailableHere && formatEquivalents(activePriceUsd) && (
                   <p className="text-sm text-gray-500 -mt-5 mb-8">
                     {formatEquivalents(activePriceUsd)}
                   </p>
@@ -610,15 +628,15 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
 
                 <div className="flex flex-col sm:flex-row gap-3.5 mb-10">
                   <button
-                    disabled={activeStock === 0 || needsVariantSelection || needsColorSelection}
-                    className={`flex-1 group relative overflow-hidden bg-gray-900 text-white py-4 px-6 rounded-xl font-medium transition-all duration-500 flex items-center justify-center space-x-2.5 text-[15px] shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 whitespace-nowrap cursor-pointer ${(activeStock === 0 || needsVariantSelection || needsColorSelection) ? 'opacity-50 cursor-not-allowed hover:-translate-y-0' : ''}`}
+                    disabled={unavailableHere || activeStock === 0 || needsVariantSelection || needsColorSelection}
+                    className={`flex-1 group relative overflow-hidden bg-gray-900 text-white py-4 px-6 rounded-xl font-medium transition-all duration-500 flex items-center justify-center space-x-2.5 text-[15px] shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 whitespace-nowrap cursor-pointer ${(unavailableHere || activeStock === 0 || needsVariantSelection || needsColorSelection) ? 'opacity-50 cursor-not-allowed hover:-translate-y-0' : ''}`}
                     onClick={handleAddToCart}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
                     <i className="ri-shopping-cart-2-line text-lg relative z-10"></i>
-                    <span className="relative z-10 tracking-wide">{activeStock === 0 ? 'Out of Stock' : needsColorSelection ? 'Select a Color' : needsVariantSelection ? 'Select a Variant' : 'Add to Cart'}</span>
+                    <span className="relative z-10 tracking-wide">{unavailableHere ? 'Not available here' : activeStock === 0 ? 'Out of Stock' : needsColorSelection ? 'Select a Color' : needsVariantSelection ? 'Select a Variant' : 'Add to Cart'}</span>
                   </button>
-                  {activeStock > 0 && !needsVariantSelection && !needsColorSelection && (
+                  {!unavailableHere && activeStock > 0 && !needsVariantSelection && !needsColorSelection && (
                     <button
                       onClick={handleBuyNow}
                       className="sm:w-[160px] bg-white border border-black/[0.06] hover:border-black/[0.12] hover:bg-gray-50 text-gray-900 py-4 rounded-xl font-medium transition-all duration-300 whitespace-nowrap cursor-pointer shadow-sm tracking-wide"
@@ -657,7 +675,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <div className="border-b border-gray-300 mb-8">
               <div className="flex space-x-4 sm:space-x-8 overflow-x-auto">
-                {['description', 'features', 'care', 'reviews'].map((tab) => (
+                {['description', ...(product.features.length > 0 ? ['features'] : []), ...(product.care ? ['care'] : []), 'reviews'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -678,7 +696,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
               </div>
             )}
 
-            {activeTab === 'features' && (
+            {activeTab === 'features' && product.features.length > 0 && (
               <div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-6">Key Features</h3>
                 <ul className="grid md:grid-cols-2 gap-4">
@@ -692,7 +710,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
               </div>
             )}
 
-            {activeTab === 'care' && (
+            {activeTab === 'care' && product.care && (
               <div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-6">Care Instructions</h3>
                 <p className="text-gray-700 text-lg leading-relaxed">{product.care}</p>

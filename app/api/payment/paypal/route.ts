@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { orderId } = body;
 
-    if (!orderId || typeof orderId !== 'string') {
+    if (!orderId || typeof orderId !== 'string' || !/^[A-Za-z0-9-]{6,64}$/.test(orderId)) {
       return NextResponse.json(
         { success: false, message: 'Missing or invalid orderId' },
         { status: 400 }
@@ -45,9 +45,12 @@ export async function POST(req: Request) {
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
-      .select('id, order_number, total, email, payment_status, currency, metadata, payment_method')
-      .or(`id.eq.${orderId},order_number.eq.${orderId}`)
-      .single();
+      .select('id, order_number, total, email, payment_status, status, currency, metadata, payment_method')
+      .eq(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId) ? 'id' : 'order_number',
+        orderId
+      )
+      .maybeSingle();
 
     if (orderError || !order) {
       return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
@@ -56,6 +59,13 @@ export async function POST(req: Request) {
     if (order.payment_status === 'paid') {
       return NextResponse.json(
         { success: false, message: 'Order is already paid' },
+        { status: 400 }
+      );
+    }
+
+    if (order.status === 'cancelled') {
+      return NextResponse.json(
+        { success: false, message: 'This order was cancelled. Please place a new order.' },
         { status: 400 }
       );
     }

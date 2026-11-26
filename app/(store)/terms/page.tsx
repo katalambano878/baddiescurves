@@ -75,7 +75,7 @@ export default function TermsPage() {
 
             <h3 className="text-xl font-bold text-gray-900 mb-4 mt-8">3.2 Pricing</h3>
             <p className="text-gray-600 leading-relaxed mb-4">
-              All prices are listed in Ghana Cedis (GHS) and include VAT where applicable. We reserve the right to:
+              Prices are listed in Ghana Cedis (GHS) for customers in Ghana and in US Dollars (USD) for international customers, and include VAT where applicable. We reserve the right to:
             </p>
             <ul className="space-y-2 text-gray-600 mb-6">
               <li className="flex items-start gap-2">
@@ -139,11 +139,11 @@ export default function TermsPage() {
               <ul className="space-y-2 text-gray-600">
                 <li className="flex items-center gap-2">
                   <i className="ri-smartphone-line text-blue-700"></i>
-                  <span>Mobile Money (MTN, Vodafone, AirtelTigo) via Moolre</span>
+                  <span>Customers in Ghana: Mobile Money (MTN, Vodafone, AirtelTigo) via Moolre, charged in Ghana Cedis</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <i className="ri-bank-card-line text-blue-700"></i>
-                  <span>Credit/Debit Cards (Visa, Mastercard) via Moolre</span>
+                  <i className="ri-paypal-line text-blue-700"></i>
+                  <span>International customers: PayPal, charged in US Dollars</span>
                 </li>
               </ul>
             </div>
@@ -183,7 +183,7 @@ export default function TermsPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">7. Intellectual Property</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              All content on this website, including text, graphics, logos, images, videos, and software, is the property of the store or its content suppliers and is protected by copyright, trademark, and other intellectual property laws.
+              All content on this website, including text, graphics, logos, images, videos, and software, is the property of BADDIECURVES or its content suppliers and is protected by copyright, trademark, and other intellectual property laws.
             </p>
             <p className="text-gray-600 leading-relaxed mb-4">
               You may not reproduce, distribute, modify, create derivative works of, publicly display, or otherwise use any content from this website without our express written permission.
@@ -227,7 +227,7 @@ export default function TermsPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">9. Limitation of Liability</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              To the fullest extent permitted by law, the store shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from:
+              To the fullest extent permitted by law, BADDIECURVES shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from:
             </p>
             <ul className="space-y-2 text-gray-600 mb-6">
               <li className="flex items-start gap-2">
@@ -259,7 +259,7 @@ export default function TermsPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">10. Indemnification</h2>
             <p className="text-gray-600 leading-relaxed">
-              You agree to indemnify and hold harmless the store, its affiliates, officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including legal fees) arising from your use of the website, violation of these terms, or infringement of any third-party rights.
+              You agree to indemnify and hold harmless BADDIECURVES, its affiliates, officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including legal fees) arising from your use of the website, violation of these terms, or infringement of any third-party rights.
             </p>
           </section>
 

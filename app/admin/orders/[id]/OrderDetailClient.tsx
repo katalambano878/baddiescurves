@@ -1,10 +1,11 @@
 'use client';
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import { money } from '@/lib/format-money';
+import { asNumber, formatMoney } from '@/lib/format-money';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { adminFetch } from '@/lib/admin-fetch';
 import FraudDetectionAlert from '@/components/FraudDetectionAlert';
 
 interface OrderDetailClientProps {
@@ -251,21 +252,15 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
     try {
       setResendingNotification(true);
 
-      // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token;
-
       const shippingAddress = order.shipping_address || {};
       const customerName = (shippingAddress.firstName && shippingAddress.lastName)
         ? `${shippingAddress.firstName.trim()} ${shippingAddress.lastName.trim()}`
         : shippingAddress.full_name || shippingAddress.firstName || order.email?.split('@')[0] || 'Customer';
+      const phone = order.phone || shippingAddress.phone;
 
-      const response = await fetch('/api/notifications', {
+      // adminFetch adds the session token and throws with the API's own error message.
+      const result = await adminFetch<{ success?: boolean; message?: string }>('/api/notifications', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` })
-        },
         body: JSON.stringify({
           type: 'order_status',
           payload: {
@@ -274,23 +269,77 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
             orderNumber: order.order_number || order.id,
             status: order.status,
             trackingNumber: order.metadata?.tracking_number || '',
-            phone: order.phone || shippingAddress.phone
+            phone
           }
         })
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to send notification');
-      }
-
-      alert('Notification sent successfully! (Email + SMS if phone available)');
+      // The API reports that it handed the messages over, not that they arrived.
+      alert(
+        `Sent to the SMS/email provider (${phone ? 'email and text' : 'email only, no phone number on this order'}).\n` +
+        `Server reply: ${result?.message || 'no details returned'}.\n` +
+        `This does not confirm the customer received it.`
+      );
     } catch (err: any) {
       console.error('Error resending notification:', err);
-      alert(`Failed to resend notification: ${err.message || 'Unknown error'}`);
+      alert(`Could not resend the notification: ${err?.message || 'Unknown error'}`);
     } finally {
       setResendingNotification(false);
+    }
+  };
+
+  // Print the packing slip once when the page was opened with ?print=true (orders list printer icon).
+  const autoPrinted = useRef(false);
+  useEffect(() => {
+    if (!order || loading || autoPrinted.current) return;
+    if (new URLSearchParams(window.location.search).get('print') !== 'true') return;
+    const timer = setTimeout(() => {
+      autoPrinted.current = true;
+      window.print();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [order, loading]);
+
+  // Mark as paid: for cash, bank transfer or a mobile-money payment confirmed by phone.
+  const [showMarkPaid, setShowMarkPaid] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
+  const [markPaidError, setMarkPaidError] = useState<string | null>(null);
+
+  const handleMarkAsPaid = async () => {
+    if (!order?.order_number) return;
+    try {
+      setMarkingPaid(true);
+      setMarkPaidError(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const adminEmail = session?.user?.email;
+      if (!adminEmail) {
+        setMarkPaidError('Your session has expired. Please log in again.');
+        return;
+      }
+
+      // The database function marks the order paid, moves it to processing and reduces stock once.
+      const { data, error } = await supabase.rpc('mark_order_paid', {
+        order_ref: order.order_number,
+        moolre_ref: `manual:${adminEmail}`
+      });
+
+      if (error) {
+        setMarkPaidError(error.message || 'The order could not be marked as paid.');
+        return;
+      }
+      if (!data || data.payment_status !== 'paid') {
+        setMarkPaidError('The order was not found, so nothing was changed.');
+        return;
+      }
+
+      setShowMarkPaid(false);
+      await fetchOrderDetails();
+    } catch (err: any) {
+      console.error('Error marking order as paid:', err);
+      setMarkPaidError(err?.message || 'The order could not be marked as paid.');
+    } finally {
+      setMarkingPaid(false);
     }
   };
 
@@ -318,6 +367,10 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   }
 
   const currentStatus = order.status || 'pending';
+  // Unpaid and still open. Refunded or cancelled orders are not offered "Mark as paid".
+  const canMarkPaid =
+    !['paid', 'refunded', 'partially_refunded', 'cancelled'].includes(order.payment_status) &&
+    order.status !== 'cancelled';
   const shippingAddress = order.shipping_address || {};
   const customerName = (shippingAddress.firstName && shippingAddress.lastName)
     ? `${shippingAddress.firstName.trim()} ${shippingAddress.lastName.trim()}`
@@ -398,7 +451,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                     <td className="py-2 px-2 font-medium">{item.product_name}</td>
                     <td className="py-2 px-2 text-sm">{item.variant_name || '-'}</td>
                     <td className="py-2 px-2 text-center font-bold">{item.quantity}</td>
-                    <td className="py-2 px-2 text-right">GH₵ {money(item.unit_price)}</td>
+                    <td className="py-2 px-2 text-right">{formatMoney(item.unit_price, order?.currency)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -413,9 +466,11 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               {trackingNumber && <p><span className="font-semibold">Tracking #:</span> {trackingNumber}</p>}
             </div>
             <div className="text-right">
-              <p>Subtotal: GH₵ {money(order?.subtotal)}</p>
-              <p>Shipping: GH₵ {money(order?.shipping_total)}</p>
-              <p className="font-bold text-lg border-t border-gray-400 pt-1 mt-1">Total: GH₵ {money(order?.total)}</p>
+              <p>Subtotal: {formatMoney(order?.subtotal, order?.currency)}</p>
+              <p>Shipping: {formatMoney(order?.shipping_total, order?.currency)}</p>
+              {asNumber(order?.tax_total) > 0 && <p>Tax: {formatMoney(order?.tax_total, order?.currency)}</p>}
+              {asNumber(order?.discount_total) > 0 && <p>Discount: -{formatMoney(order?.discount_total, order?.currency)}</p>}
+              <p className="font-bold text-lg border-t border-gray-400 pt-1 mt-1">Total: {formatMoney(order?.total, order?.currency)}</p>
             </div>
           </div>
 
@@ -483,7 +538,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                       <p className="text-xs text-gray-500">SKU: {item.sku}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900 mb-1">GH₵ {money(item.unit_price)}</p>
+                      <p className="font-semibold text-gray-900 mb-1">{formatMoney(item.unit_price, order.currency)}</p>
                       <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
                     </div>
                   </div>
@@ -493,25 +548,25 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
                 <div className="flex justify-between text-gray-700">
                   <span>Subtotal</span>
-                  <span>GH₵ {money(order.subtotal)}</span>
+                  <span>{formatMoney(order.subtotal, order.currency)}</span>
                 </div>
                 <div className="flex justify-between text-gray-700">
                   <span>Shipping</span>
-                  <span>GH₵ {money(order.shipping_total)}</span>
+                  <span>{formatMoney(order.shipping_total, order.currency)}</span>
                 </div>
                 <div className="flex justify-between text-gray-700">
                   <span>Tax</span>
-                  <span>GH₵ {money(order.tax_total)}</span>
+                  <span>{formatMoney(order.tax_total, order.currency)}</span>
                 </div>
                 {order.discount_total > 0 && (
                   <div className="flex justify-between text-blue-700 font-semibold">
                     <span>Discount</span>
-                    <span>-GH₵ {money(order.discount_total)}</span>
+                    <span>-{formatMoney(order.discount_total, order.currency)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-xl font-bold text-gray-900 pt-3 border-t border-gray-200">
                   <span>Total</span>
-                  <span>GH₵ {money(order.total)}</span>
+                  <span>{formatMoney(order.total, order.currency)}</span>
                 </div>
               </div>
             </div>
@@ -642,9 +697,13 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Status</span>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold whitespace-nowrap capitalize">
-                    {order.payment_status}
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold whitespace-nowrap capitalize ${order.payment_status === 'paid' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {String(order.payment_status || 'pending').replace(/_/g, ' ')}
                   </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount</span>
+                  <span className="font-semibold text-gray-900">{formatMoney(order.total, order.currency)}</span>
                 </div>
                 <div className="flex justify-between">
                   {/* Transaction ID might be in metadata depending on callback */}
@@ -664,6 +723,20 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                   </div>
                 )}
               </div>
+              {canMarkPaid && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => { setMarkPaidError(null); setShowMarkPaid(true); }}
+                    className="w-full bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-lg font-semibold transition-colors whitespace-nowrap flex items-center justify-center"
+                  >
+                    <i className="ri-checkbox-circle-line mr-2"></i>
+                    Mark as paid
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Use this when the customer paid by cash, bank transfer, or mobile money confirmed by phone.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -714,6 +787,48 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
           </div>
         </div>
       </div>
+
+      {showMarkPaid && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 no-print">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mark-paid-title"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
+          >
+            <h2 id="mark-paid-title" className="text-lg font-bold text-gray-900 mb-2">
+              Mark order {order.order_number} as paid?
+            </h2>
+            <p className="text-sm text-gray-700">
+              You are confirming that <span className="font-semibold">{customerName}</span> has paid{' '}
+              <span className="font-semibold">{formatMoney(order.total, order.currency)}</span> for order{' '}
+              <span className="font-semibold">{order.order_number}</span>.
+            </p>
+            <p className="text-sm text-gray-600 mt-3">
+              The order will move to Processing and the stock for its items will be reduced. This cannot be undone from this page.
+            </p>
+            {markPaidError && (
+              <p className="mt-3 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{markPaidError}</p>
+            )}
+            <div className="mt-6 flex items-center justify-end space-x-3">
+              <button
+                onClick={() => setShowMarkPaid(false)}
+                disabled={markingPaid}
+                className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:border-gray-400 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMarkAsPaid}
+                disabled={markingPaid}
+                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
+              >
+                {markingPaid ? 'Saving...' : `Yes, mark ${formatMoney(order.total, order.currency)} as paid`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

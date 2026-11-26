@@ -174,8 +174,11 @@ export default function AdminLayout({
     }
 
     fetchModules();
+    // The Modules page fires this after a switch is saved, so menu items show or hide without a reload.
+    window.addEventListener('store-modules-changed', fetchModules);
     return () => {
       cancelled = true;
+      window.removeEventListener('store-modules-changed', fetchModules);
     };
   }, [isLoginPage, isAuthenticated]);
 
@@ -247,8 +250,10 @@ export default function AdminLayout({
     { title: 'POS System', icon: 'ri-store-3-line', path: '/admin/pos' },
     { title: 'Buy SMS', icon: 'ri-message-2-line', path: '/admin/sms-credit' },
     { title: 'Products', icon: 'ri-box-3-line', path: '/admin/products' },
+    { title: 'Sales', icon: 'ri-price-tag-3-line', path: '/admin/sales' },
     { title: 'Categories', icon: 'ri-folder-line', path: '/admin/categories' },
     { title: 'Customers', icon: 'ri-group-line', path: '/admin/customers' },
+    { title: 'Messages', icon: 'ri-mail-line', path: '/admin/messages' },
     { title: 'Reviews', icon: 'ri-chat-smile-2-line', path: '/admin/reviews' },
     { title: 'Inventory', icon: 'ri-stack-line', path: '/admin/inventory' },
     { title: 'Shipping', icon: 'ri-truck-line', path: '/admin/shipping' },
@@ -267,7 +272,7 @@ export default function AdminLayout({
       path: '/admin/notifications',
       moduleId: 'notifications',
     },
-    { title: 'SMS Debugger', icon: 'ri-message-2-line', path: '/admin/test-sms' },
+    { title: 'Test SMS', icon: 'ri-message-2-line', path: '/admin/test-sms' },
     { title: 'Blog', icon: 'ri-article-line', path: '/admin/blog', moduleId: 'blog' },
     { title: 'Modules', icon: 'ri-puzzle-line', path: '/admin/modules' },
   ];
@@ -366,11 +371,6 @@ export default function AdminLayout({
             </button>
 
             <div className="flex items-center space-x-2 lg:space-x-4">
-              <button className="relative w-10 h-10 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
-                <i className="ri-notification-3-line text-xl"></i>
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-
               <div className="relative user-menu-container">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}

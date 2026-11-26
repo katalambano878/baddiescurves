@@ -5,17 +5,12 @@ import Link from 'next/link';
 
 export default function PWASettingsPage() {
   const [isInstalled, setIsInstalled] = useState(false);
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [storageUsage, setStorageUsage] = useState({ used: 0, quota: 0 });
   const [cacheSize, setCacheSize] = useState(0);
 
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
-    }
-
-    if ('Notification' in window) {
-      setNotificationPermission(Notification.permission);
     }
 
     if ('storage' in navigator && 'estimate' in navigator.storage) {
@@ -48,13 +43,6 @@ export default function PWASettingsPage() {
       await Promise.all(cacheNames.map((name) => caches.delete(name)));
       setCacheSize(0);
       alert('Cache cleared successfully!');
-    }
-  };
-
-  const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
     }
   };
 
@@ -102,67 +90,6 @@ export default function PWASettingsPage() {
               }`}>
                 <i className={isInstalled ? 'ri-check-line text-2xl' : 'ri-close-line text-2xl'}></i>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                <i className="ri-notification-line text-purple-700"></i>
-              </div>
-              Notifications
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                <div>
-                  <p className="font-semibold text-gray-900 mb-1">Push Notifications</p>
-                  <p className="text-sm text-gray-600">
-                    Status: <span className="font-medium capitalize">{notificationPermission}</span>
-                  </p>
-                </div>
-                {notificationPermission === 'default' && (
-                  <button
-                    onClick={requestNotificationPermission}
-                    className="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800 transition-colors whitespace-nowrap"
-                  >
-                    Enable
-                  </button>
-                )}
-                {notificationPermission === 'granted' && (
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <i className="ri-check-line text-green-700 text-2xl"></i>
-                  </div>
-                )}
-                {notificationPermission === 'denied' && (
-                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                    <i className="ri-close-line text-red-700 text-2xl"></i>
-                  </div>
-                )}
-              </div>
-
-              {notificationPermission === 'granted' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <p className="text-sm text-blue-800 font-medium mb-2">You will receive notifications for:</p>
-                  <ul className="space-y-1 text-sm text-blue-700">
-                    <li className="flex items-center gap-2">
-                      <i className="ri-check-line"></i>
-                      <span>Order confirmations and updates</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <i className="ri-check-line"></i>
-                      <span>Flash sales and exclusive deals</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <i className="ri-check-line"></i>
-                      <span>Wishlist price drops</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <i className="ri-check-line"></i>
-                      <span>Back in stock alerts</span>
-                    </li>
-                  </ul>
-                </div>
-              )}
             </div>
           </div>
 

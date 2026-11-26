@@ -1,6 +1,6 @@
 'use client';
 
-import { money } from '@/lib/format-money';
+import { asNumber, formatMoney, formatMoneyByCurrency } from '@/lib/format-money';
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
@@ -22,6 +22,8 @@ type SectionStatus = { ok: boolean; ms?: number; error?: string };
 export default function AdminDashboardClient({ smsCredit }: { smsCredit: DashboardSmsCredit }) {
   const [dateRange, setDateRange] = useState('7days');
   const [loading, setLoading] = useState(true);
+  const [loadedOnce, setLoadedOnce] = useState(false);
+  const [chartTotals, setChartTotals] = useState<{ GHS: number; USD: number }>({ GHS: 0, USD: 0 });
   const [error, setError] = useState<string | null>(null);
   const [degraded, setDegraded] = useState(false);
   const [sections, setSections] = useState<Record<string, SectionStatus>>({});
@@ -29,33 +31,25 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
   const [stats, setStats] = useState([
     {
       title: 'Total Revenue',
-      value: 'GH₵ 0.00',
-      change: '0%',
-      trend: 'up',
+      value: formatMoney(0, 'GHS'),
       icon: 'ri-money-dollar-circle-line',
       color: 'blue',
     },
     {
       title: 'Orders',
       value: '0',
-      change: '0%',
-      trend: 'up',
       icon: 'ri-shopping-bag-line',
       color: 'blue',
     },
     {
       title: 'Customers',
       value: '0',
-      change: '0%',
-      trend: 'up',
       icon: 'ri-group-line',
       color: 'purple',
     },
     {
       title: 'Avg Order Value',
-      value: 'GH₵ 0.00',
-      change: '0%',
-      trend: 'up',
+      value: formatMoney(0, 'GHS'),
       icon: 'ri-line-chart-line',
       color: 'amber',
     },
@@ -65,6 +59,8 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
+
+  const days = dateRange === '30days' ? 30 : 7;
 
   const loadDashboard = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -85,7 +81,7 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
         sections?: Record<string, SectionStatus>;
         data?: any;
         error?: { message?: string };
-      }>('/api/admin/dashboard', {
+      }>(`/api/admin/dashboard?days=${days}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -109,37 +105,42 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
       setDegraded(!!result.data.degraded);
       setSections(result.data.sections || {});
       setChartData(payload.chartData || []);
+      setChartTotals({
+        GHS: asNumber(payload.chartTotals?.GHS),
+        USD: asNumber(payload.chartTotals?.USD),
+      });
+      setLoadedOnce(true);
+
+      // Cedis and dollars are shown side by side, never added together.
+      const revenue = s.revenueByCurrency || {};
+      const averages = s.avgOrderValueByCurrency || {};
+      const paidCounts = s.paidCountByCurrency || {};
+      const averageParts = (['GHS', 'USD'] as const)
+        .filter((c) => asNumber(paidCounts[c]) > 0)
+        .map((c) => formatMoney(averages[c], c));
 
       setStats([
         {
           title: 'Total Revenue',
-          value: `GH₵ ${money(s.totalRevenue || 0)}`,
-          change: '+0%',
-          trend: 'up',
+          value: formatMoneyByCurrency(revenue),
           icon: 'ri-money-dollar-circle-line',
           color: 'blue',
         },
         {
           title: 'Orders',
           value: String(s.totalOrders || 0),
-          change: '+0%',
-          trend: 'up',
           icon: 'ri-shopping-bag-line',
           color: 'blue',
         },
         {
           title: 'Customers (Active)',
           value: String(s.uniqueCustomers || 0),
-          change: '+0%',
-          trend: 'up',
           icon: 'ri-group-line',
           color: 'purple',
         },
         {
           title: 'Avg Order Value',
-          value: `GH₵ ${money(s.avgOrderValue || 0)}`,
-          change: '+0%',
-          trend: 'up',
+          value: averageParts.length ? averageParts.join(' · ') : formatMoney(0, 'GHS'),
           icon: 'ri-line-chart-line',
           color: 'amber',
         },
@@ -158,6 +159,7 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
           email: o.email,
           date: new Date(o.created_at).toLocaleDateString(),
           total: o.total,
+          currency: o.currency,
           status: o.status,
           items: 1,
         };
@@ -174,9 +176,10 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
 
       setTopProducts(
         (payload.topProducts || []).map((p: any) => ({
-          id: p.slug || p.id,
+          // The product editor looks products up by id, not slug.
+          id: p.id,
           name: p.name,
-          image: p.product_images?.[0]?.url || 'https://via.placeholder.com/200',
+          image: p.product_images?.[0]?.url || '/placeholder-product.svg',
           sales: 0,
           revenue: 0,
           stock: p.quantity,
@@ -188,7 +191,7 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, []);
+  }, [days]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -204,7 +207,7 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
     cancelled: 'bg-red-100 text-red-700',
   };
 
-  if (loading) {
+  if (loading && !loadedOnce) {
     return (
       <div className="p-8 text-center text-gray-500 flex flex-col items-center gap-2">
         <i className="ri-loader-4-line animate-spin text-2xl text-blue-700" />
@@ -281,7 +284,6 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
                 >
                   <i className={`${stat.icon} text-2xl`}></i>
                 </div>
-                <span className="text-sm font-semibold text-blue-700">{stat.change}</span>
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
               <p className="text-gray-600 text-sm">{stat.title}</p>
@@ -303,6 +305,17 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
               </select>
             </div>
             <RevenueChart data={chartData} />
+            <p className="mt-3 text-sm text-gray-600">
+              The chart shows paid orders in cedis only. Last {days} days:{' '}
+              <span className="font-semibold text-gray-900">
+                {formatMoney(chartTotals.GHS, 'GHS')}
+              </span>{' '}
+              in cedis and{' '}
+              <span className="font-semibold text-gray-900">
+                {formatMoney(chartTotals.USD, 'USD')}
+              </span>{' '}
+              in dollars.
+            </p>
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -408,7 +421,7 @@ export default function AdminDashboardClient({ smsCredit }: { smsCredit: Dashboa
                         </td>
                         <td className="py-4 px-4 text-gray-700 whitespace-nowrap">{order.date}</td>
                         <td className="py-4 px-4 font-semibold text-gray-900 whitespace-nowrap">
-                          GH₵ {money(order.total)}
+                          {formatMoney(order.total, order.currency)}
                         </td>
                         <td className="py-4 px-4">
                           <span

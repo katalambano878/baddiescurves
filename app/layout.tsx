@@ -12,7 +12,7 @@ export const viewport: Viewport = {
   themeColor: '#2563eb',
 };
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://example.com';
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baddiecurves.com';
 
 // Favicon and OG assets come from public/
 export const metadata: Metadata = {

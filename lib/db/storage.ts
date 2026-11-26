@@ -49,11 +49,26 @@ export function verifyObjectToken(
   return out === 0;
 }
 
+const BUCKET_RE = /^[a-z0-9][a-z0-9_-]{0,62}$/i;
+
+/** File types the shop stores and serves. Anything else is refused on upload. */
+export const ALLOWED_UPLOAD_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+]);
+
 function safeJoin(bucket: string, objectPath: string): string {
+  if (!BUCKET_RE.test(bucket)) throw new Error("Invalid bucket name");
   const clean = objectPath.replace(/^\/+/, "");
-  const full = path.normalize(path.join(STORAGE_ROOT, bucket, clean));
-  const base = path.normalize(path.join(STORAGE_ROOT, bucket));
-  if (!full.startsWith(base)) throw new Error("Path traversal blocked");
+  if (!clean || clean.split(/[\\/]/).some((seg) => seg === ".." || seg === ".")) {
+    throw new Error("Invalid object path");
+  }
+  const base = path.resolve(STORAGE_ROOT, bucket);
+  const full = path.resolve(base, clean);
+  if (!full.startsWith(base + path.sep)) throw new Error("Path traversal blocked");
   return full;
 }
 

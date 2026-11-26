@@ -23,6 +23,12 @@ function isPublicIp(ip: string): boolean {
  * Coolify/Traefik usually has no CF-IPCountry, so we look up by IP.
  */
 export async function GET(req: NextRequest) {
+  // The shopper picked their market themselves (checkout switch): keep it.
+  const chosen = (req.cookies.get('country')?.value || '').toUpperCase();
+  if (req.cookies.get('country_choice')?.value === '1' && /^[A-Z]{2}$/.test(chosen)) {
+    return NextResponse.json({ country: chosen, source: 'choice' });
+  }
+
   const headerCountry = (
     req.headers.get('cf-ipcountry') ||
     req.headers.get('x-vercel-ip-country') ||
@@ -70,7 +76,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const res = NextResponse.json({ country, source, ip: ip && isPublicIp(ip) ? ip : undefined });
+  // A failed lookup is only a guess: keep the country this visitor already has.
+  const previous = (req.cookies.get('country')?.value || '').toUpperCase();
+  if (source === 'default' && /^[A-Z]{2}$/.test(previous)) {
+    return NextResponse.json({ country: previous, source: 'cookie' });
+  }
+
+  const res = NextResponse.json({ country, source });
   res.cookies.set('country', country, {
     path: '/',
     maxAge: 60 * 60 * 24 * 30,

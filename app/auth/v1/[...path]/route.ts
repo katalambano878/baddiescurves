@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import {
   signInWithPassword,
   signUpWithPassword,
@@ -7,8 +7,13 @@ import {
   getUserById,
   updateUserPassword,
   updateUserMetadata,
+  createRecoveryToken,
+  resetPasswordWithToken,
+  MIN_PASSWORD_LENGTH,
 } from "@/lib/db/auth";
 import { isPlainPostgres } from "@/lib/db/mode";
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
+import { sendPasswordResetEmail, siteOrigin } from "@/lib/password-reset-email";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,6 +31,20 @@ function gotrueError(message: string, status = 400, code = "invalid_request") {
   return NextResponse.json(
     { error: code, error_description: message, msg: message, message },
     { status, headers: cors() }
+  );
+}
+
+// Password reset limits (in-memory, per server process).
+const RECOVER_EMAIL_LIMIT = { maxRequests: 3, windowSeconds: 15 * 60 };
+const RECOVER_IP_LIMIT = { maxRequests: 10, windowSeconds: 15 * 60 };
+const RESET_IP_LIMIT = { maxRequests: 10, windowSeconds: 15 * 60 };
+
+function tooManyRequests(message: string, retryAfterSeconds: number) {
+  const headers = new Headers(cors());
+  headers.set("Retry-After", String(Math.max(1, retryAfterSeconds)));
+  return NextResponse.json(
+    { error: "over_request_rate_limit", error_description: message, msg: message, message },
+    { status: 429, headers }
   );
 }
 
@@ -142,12 +161,96 @@ export async function POST(
   }
 
   if (slug === "logout") {
-    return NextResponse.json({}, { status: 204, headers: cors() });
+    // 204 must not carry a body: NextResponse.json(..., { status: 204 }) throws
+    // on Node and turned every sign-out into a 500.
+    return new NextResponse(null, { status: 204, headers: cors() });
   }
 
   if (slug === "recover") {
-    // Password recovery email not wired in staging shim yet
+    const email = String(body.email || "").trim().toLowerCase();
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      return gotrueError("Enter a valid email address.", 400, "validation_failed");
+    }
+
+    const ip = getClientIdentifier(req);
+    const ipLimit = checkRateLimit(`recover:ip:${ip}`, RECOVER_IP_LIMIT);
+    const emailLimit = checkRateLimit(`recover:email:${email}`, RECOVER_EMAIL_LIMIT);
+    if (!ipLimit.success || !emailLimit.success) {
+      const waitSeconds = Math.max(
+        ipLimit.success ? 0 : ipLimit.resetIn,
+        emailLimit.success ? 0 : emailLimit.resetIn
+      );
+      return tooManyRequests(
+        `Too many reset requests. Try again in ${Math.max(1, Math.ceil(waitSeconds / 60))} minutes.`,
+        waitSeconds
+      );
+    }
+
+    // Same answer whether or not the account exists. The email goes out after
+    // the response so timing does not give the answer away either.
+    try {
+      const recovery = await createRecoveryToken(email);
+      if (recovery) {
+        const origin = siteOrigin(req);
+        after(async () => {
+          const sent = await sendPasswordResetEmail({
+            to: recovery.email,
+            firstName: recovery.firstName,
+            token: recovery.token,
+            origin,
+          }).catch(() => false);
+          if (!sent) console.error("[auth] Password reset email was not sent");
+        });
+      }
+    } catch (err: any) {
+      console.error("[auth] recover failed:", err?.message || err);
+    }
     return NextResponse.json({}, { status: 200, headers: cors() });
+  }
+
+  // Not part of GoTrue: finishes a reset started by /recover.
+  if (slug === "reset-password") {
+    const ip = getClientIdentifier(req);
+    const limit = checkRateLimit(`reset-password:ip:${ip}`, RESET_IP_LIMIT);
+    if (!limit.success) {
+      return tooManyRequests(
+        `Too many attempts. Try again in ${Math.max(1, Math.ceil(limit.resetIn / 60))} minutes.`,
+        limit.resetIn
+      );
+    }
+
+    const token = String(body.token || "").trim();
+    const password = String(body.password || "");
+    let result;
+    try {
+      result = await resetPasswordWithToken(token, password);
+    } catch (err: any) {
+      console.error("[auth] reset-password failed:", err?.message || err);
+      return gotrueError("We could not save your new password. Please try again.", 500, "server_error");
+    }
+
+    if (!result.ok) {
+      if (result.reason === "weak_password") {
+        return gotrueError(
+          `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+          400,
+          "weak_password"
+        );
+      }
+      if (result.reason === "expired_token") {
+        return gotrueError(
+          "This reset link has expired. Request a new one.",
+          400,
+          "expired_token"
+        );
+      }
+      return gotrueError(
+        "This reset link is not valid or has already been used. Request a new one.",
+        400,
+        "invalid_token"
+      );
+    }
+    return NextResponse.json({ ok: true }, { status: 200, headers: cors() });
   }
 
   return gotrueError(`Unknown auth path: ${slug}`, 404);

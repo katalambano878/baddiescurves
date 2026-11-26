@@ -2,6 +2,12 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { isRealEmail } from '../customers/match-orders';
+
+// The campaign API insists on a subject even when only texts are sent (a text has no subject).
+const SMS_ONLY_SUBJECT = 'Message from BADDIECURVES';
+
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
 export default function NotificationsPage() {
     const [loading, setLoading] = useState(false);
@@ -11,8 +17,7 @@ export default function NotificationsPage() {
     const [form, setForm] = useState({
         subject: '',
         message: '',
-        channels: { email: true, sms: false },
-        audience: 'all'
+        channels: { email: true, sms: false }
     });
 
     const handleSend = async (e: React.FormEvent) => {
@@ -44,7 +49,8 @@ export default function NotificationsPage() {
             const recipients: any[] = [];
             for (const c of (customers || [])) {
                 const phones = [c.phone, c.secondary_phone].filter(Boolean).map((p: string) => normalizePhone(p));
-                const emails = [c.email, c.secondary_email].filter(Boolean).map((e: string) => e.toLowerCase().trim());
+                // POS walk-in customers carry placeholder addresses ending in @pos.local; never email those.
+                const emails = [c.email, c.secondary_email].filter(isRealEmail).map((e: string) => e.toLowerCase().trim());
 
                 // Pick first unique phone for this customer
                 const uniquePhone = phones.find(p => !seenPhones.has(p)) || null;
@@ -74,10 +80,10 @@ export default function NotificationsPage() {
             const smsCount = recipients.filter(r => r.phone).length;
             const emailCount = recipients.filter(r => r.email).length;
             const summary = [];
-            if (form.channels.sms) summary.push(`${smsCount} SMS (deduplicated)`);
-            if (form.channels.email) summary.push(`${emailCount} emails`);
+            if (form.channels.sms) summary.push(plural(smsCount, 'text', 'texts'));
+            if (form.channels.email) summary.push(plural(emailCount, 'email', 'emails'));
 
-            if (!window.confirm(`This will send ${summary.join(' and ')} to your customers. Continue?`)) {
+            if (!window.confirm(`This will send ${summary.join(' and ')} to your customers. Each customer gets it once. Continue?`)) {
                 setLoading(false);
                 return;
             }
@@ -101,7 +107,7 @@ export default function NotificationsPage() {
                         type: 'campaign',
                         payload: {
                             recipients: batch,
-                            subject: form.subject,
+                            subject: form.channels.email ? form.subject : SMS_ONLY_SUBJECT,
                             message: form.message,
                             channels: form.channels,
                         }
@@ -130,11 +136,12 @@ export default function NotificationsPage() {
                 if (errorMatch) totalErrors += parseInt(errorMatch[1]);
             }
 
+            // The API counts what it handed to the provider. It cannot confirm delivery.
             const resultParts = [];
-            if (totalEmail > 0) resultParts.push(`${totalEmail} emails`);
-            if (totalSms > 0) resultParts.push(`${totalSms} SMS`);
-            const errorNote = totalErrors > 0 ? ` (${totalErrors} failed)` : '';
-            setSuccess(`Campaign sent successfully! ${resultParts.join(', ')} sent.${errorNote}`);
+            if (form.channels.sms) resultParts.push(plural(totalSms, 'text', 'texts'));
+            if (form.channels.email) resultParts.push(plural(totalEmail, 'email', 'emails'));
+            const errorNote = totalErrors > 0 ? ` ${plural(totalErrors, 'customer', 'customers')} could not be sent to.` : '';
+            setSuccess(`Sent ${resultParts.join(' and ')} to the provider.${errorNote} This page cannot confirm they were delivered.`);
             setForm(prev => ({ ...prev, subject: '', message: '' }));
         } catch (err: any) {
             setError(err.message);
@@ -156,14 +163,12 @@ export default function NotificationsPage() {
                 <form onSubmit={handleSend} className="space-y-6">
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Audience</label>
-                        <select
-                            value={form.audience}
-                            onChange={e => setForm({ ...form, audience: e.target.value })}
-                            className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="all">All Customers</option>
-                            <option value="newsletter">Newsletter Subscribers</option>
-                        </select>
+                        <p className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
+                            All customers
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Texts go to every customer with a phone number, emails to every customer with an email address.
+                        </p>
                     </div>
 
                     <div className="flex gap-6 p-4 bg-gray-50 rounded-lg border border-gray-100">

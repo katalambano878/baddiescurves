@@ -5,11 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { useCurrency } from '@/lib/currency';
+import { formatMoney } from '@/lib/format-money';
 
 export default function PaymentPage() {
   usePageTitle('Complete Payment');
-  const { formatPrice } = useCurrency();
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
@@ -22,14 +21,13 @@ export default function PaymentPage() {
   useEffect(() => {
     async function fetchOrder() {
       try {
-        // Fetch order by ID (UUID) or order_number
-        let query = supabase
+        // The link carries either the order's id or its order number.
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
+        const { data, error: fetchError } = await supabase
           .from('orders')
           .select('*')
-          .or(`id.eq.${orderId},order_number.eq.${orderId}`)
-          .single();
-
-        const { data, error: fetchError } = await query;
+          .eq(isUuid ? 'id' : 'order_number', orderId)
+          .maybeSingle();
 
         if (fetchError || !data) {
           setError('Order not found. Please check your link and try again.');
@@ -63,6 +61,8 @@ export default function PaymentPage() {
     order?.metadata?.payment_method ||
     (String(order?.currency || '').toUpperCase() === 'USD' ? 'paypal' : 'moolre');
   const isPayPal = paymentMethod === 'paypal';
+  // An order's amounts are always shown in the currency it was placed in.
+  const formatPrice = (amount: unknown) => formatMoney(amount, order?.currency);
 
   const handlePayNow = async () => {
     if (!order) return;

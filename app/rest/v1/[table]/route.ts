@@ -6,6 +6,7 @@ import {
 import { isPlainPostgres } from "@/lib/db/mode";
 import {
   applyForcedFilters,
+  applyForcedValues,
   authorizeRestAccess,
   resolveRestActor,
 } from "@/lib/db/rest-acl";
@@ -135,7 +136,14 @@ export async function POST(
   }
 
   const client = createClient();
-  let qb = client.from(table).insert(body);
+  const rows = applyForcedValues(body, decision.forcedValues);
+  // supabase-js .upsert() sends `Prefer: resolution=merge-duplicates` (+ ?on_conflict=cols).
+  const prefer = req.headers.get("prefer") || "";
+  const isUpsert = actor.kind !== "anon" && actor.kind !== "user" && prefer.includes("resolution=merge-duplicates");
+  const onConflict = req.nextUrl.searchParams.get("on_conflict") || undefined;
+  let qb = isUpsert
+    ? client.from(table).upsert(rows, onConflict ? { onConflict } : undefined)
+    : client.from(table).insert(rows);
   if (preferReturn(req) || preferSingle(req)) {
     qb = qb.select("*") as typeof qb;
   }
@@ -177,7 +185,7 @@ export async function PATCH(
 
   const params = applyForcedFilters(req.nextUrl.searchParams, decision.forcedFilters);
   const client = createClient();
-  let qb = client.from(table).update(body);
+  let qb = client.from(table).update(applyForcedValues(body, decision.forcedValues));
   applyPostgrestParams(qb as any, params);
   if (preferReturn(req) || preferSingle(req)) {
     qb = qb.select("*") as typeof qb;
@@ -212,8 +220,12 @@ export async function DELETE(
   }
 
   const client = createClient();
+  const params = applyForcedFilters(req.nextUrl.searchParams, decision.forcedFilters);
+  // A delete with no filter at all would empty the table: never allow that by accident.
+  const hasFilter = Array.from(params.keys()).some((k) => !["select", "order", "limit", "offset"].includes(k));
+  if (!hasFilter) return jsonError("A delete needs at least one filter", 400);
   let qb = client.from(table).delete();
-  applyPostgrestParams(qb as any, req.nextUrl.searchParams);
+  applyPostgrestParams(qb as any, params);
   if (preferReturn(req)) {
     qb = qb.select("*") as typeof qb;
   }

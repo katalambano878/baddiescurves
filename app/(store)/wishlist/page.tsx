@@ -1,33 +1,93 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import PageHero from '@/components/PageHero';
 import { useWishlist } from '@/context/WishlistContext';
-import ProductCard from '@/components/ProductCard';
+import ProductCard, { mapProductToCard } from '@/components/ProductCard';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { supabase } from '@/lib/supabase';
+import { useCurrency } from '@/lib/currency';
 
 export default function WishlistPage() {
   usePageTitle('Wishlist');
-  const { wishlist: wishlistItems, removeFromWishlist } = useWishlist();
+  const { wishlist: wishlistItems, removeFromWishlist, refreshWishlist } = useWishlist();
   const { addToCart } = useCart();
+  const { resolveAmount } = useCurrency();
+  const [cartNotice, setCartNotice] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState('');
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  // The wishlist is saved in this browser as a snapshot. Bring prices, stock
+  // and photos up to date, and drop products the shop no longer sells.
+  const idsKey = wishlistItems.map(item => item.id).sort().join(',');
+  useEffect(() => {
+    if (!idsKey) return;
+    let cancelled = false;
+    const ids = idsKey.split(',');
+    (async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*, categories(name), product_variants(*), product_images(url, position, alt_text)')
+        .in('id', ids);
+      if (cancelled || error || !data) return;
+      const active = data.filter((product: any) => !product.status || product.status === 'active');
+      const fresh = active.map((product: any) => mapProductToCard(product));
+      const freshIds = new Set(fresh.map((item: { id: string }) => item.id));
+      refreshWishlist(fresh, ids.filter(id => !freshIds.has(id)));
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey]);
 
   const addAllToCart = () => {
-    const inStockItems = wishlistItems.filter(item => item.inStock);
-    inStockItems.forEach(item => {
-      // Convert WishlistItem to CartItem if necessary, or assume compatibility
+    // Products with sizes or colours need a choice on their own page first.
+    const ready = wishlistItems.filter(item => item.inStock && !item.hasVariants);
+    const needChoice = wishlistItems.filter(item => item.inStock && item.hasVariants).length;
+    ready.forEach(item => {
       addToCart({
         id: item.id,
         name: item.name,
-        price: item.price,
+        price: resolveAmount(item.price, item.price_ghs),
         image: item.image,
-        quantity: 1,
-        slug: item.slug || item.id, // Fallback
-        maxStock: 99 // Default
+        quantity: item.moq || 1,
+        slug: item.slug || item.id,
+        maxStock: Math.max(0, item.maxStock ?? 0),
+        moq: item.moq || 1
       });
     });
-    if (inStockItems.length > 0) {
-      alert(`Added ${inStockItems.length} items to cart`);
+
+    const parts: string[] = [];
+    if (ready.length > 0) {
+      parts.push(`Added ${ready.length} ${ready.length === 1 ? 'item' : 'items'} to your cart.`);
+    }
+    if (needChoice > 0) {
+      parts.push(`${needChoice} ${needChoice === 1 ? 'item needs' : 'items need'} a size or colour: open ${needChoice === 1 ? 'it' : 'them'} to choose.`);
+    }
+    if (parts.length === 0) parts.push('Nothing on your wishlist is in stock right now.');
+    setCartNotice(parts.join(' '));
+  };
+
+  const shareText = [
+    'My BADDIECURVES wishlist:',
+    ...wishlistItems.map(item => `${item.name} ${origin}/product/${item.slug || item.id}`)
+  ].join('\n');
+
+  const copyWishlist = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setCopied(false);
+      setCartNotice('Your browser blocked copying. Use WhatsApp or email to share instead.');
     }
   };
 
@@ -57,6 +117,11 @@ export default function WishlistPage() {
               </button>
             )}
           </div>
+          {cartNotice && (
+            <p role="status" className="mt-4 text-sm font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+              {cartNotice}
+            </p>
+          )}
         </div>
       </section>
 
@@ -82,7 +147,8 @@ export default function WishlistPage() {
                   <ProductCard {...product} slug={product.slug || product.id} />
                   <button
                     onClick={() => removeFromWishlist(product.id)}
-                    className="absolute top-3 right-3 w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md hover:bg-red-50 transition-colors z-10"
+                    aria-label={`Remove ${product.name} from wishlist`}
+                    className="absolute top-3 right-3 w-11 h-11 flex items-center justify-center bg-white rounded-full shadow-md hover:bg-red-50 transition-colors z-30"
                   >
                     <i className="ri-close-line text-gray-700 text-xl"></i>
                   </button>
@@ -93,6 +159,7 @@ export default function WishlistPage() {
         </section>
       )}
 
+      {wishlistItems.length > 0 && (
       <section className="py-24 relative bg-gray-50 overflow-hidden">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
           <div className="relative bg-white p-12 sm:p-20 rounded-[3rem] border border-gray-100 shadow-[0_8px_40px_rgba(0,0,0,0.03)] text-center overflow-hidden group transition-all duration-700 hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)]">
@@ -111,25 +178,37 @@ export default function WishlistPage() {
               <p className="text-gray-500 mb-12 text-lg sm:text-xl font-light max-w-lg mx-auto leading-relaxed">Let friends and family know exactly what you love.</p>
 
               <div className="flex items-center justify-center gap-4 sm:gap-6">
-                {[
-                  { icon: 'ri-facebook-fill' },
-                  { icon: 'ri-twitter-x-fill' },
-                  { icon: 'ri-whatsapp-fill' },
-                  { icon: 'ri-mail-fill' },
-                ].map((item, idx) => (
-                  <button
-                    key={idx}
-                    className="group/btn relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-400 hover:text-gray-900 hover:border-gray-300 hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 active:scale-95"
-                  >
-                    <i className={`${item.icon} text-xl sm:text-2xl transition-transform duration-300 group-hover/btn:scale-110`}></i>
-                    <div className="absolute inset-0 rounded-full bg-gray-50 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300 -z-10"></div>
-                  </button>
-                ))}
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Share your wishlist on WhatsApp"
+                  className="group/btn relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 active:scale-95"
+                >
+                  <i className="ri-whatsapp-fill text-xl sm:text-2xl transition-transform duration-300 group-hover/btn:scale-110"></i>
+                </a>
+                <a
+                  href={`mailto:?subject=${encodeURIComponent('My BADDIECURVES wishlist')}&body=${encodeURIComponent(shareText)}`}
+                  aria-label="Share your wishlist by email"
+                  className="group/btn relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 active:scale-95"
+                >
+                  <i className="ri-mail-fill text-xl sm:text-2xl transition-transform duration-300 group-hover/btn:scale-110"></i>
+                </a>
+                <button
+                  type="button"
+                  onClick={copyWishlist}
+                  aria-label="Copy your wishlist"
+                  className="group/btn relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 active:scale-95"
+                >
+                  <i className={`${copied ? 'ri-check-line' : 'ri-file-copy-line'} text-xl sm:text-2xl transition-transform duration-300 group-hover/btn:scale-110`}></i>
+                </button>
               </div>
+              <p role="status" className="mt-4 h-5 text-sm text-gray-600">{copied ? 'Wishlist copied.' : ''}</p>
             </div>
           </div>
         </div>
       </section>
+      )}
     </main>
   );
 }

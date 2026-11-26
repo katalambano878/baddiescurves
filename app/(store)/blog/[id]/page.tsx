@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { sanitizeHtml } from '@/lib/sanitize';
 
 export async function generateStaticParams() {
@@ -54,7 +55,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
         <h2>Stage fajas</h2>
         <p>Stage 1–3 fajas offer progressive compression. Choose based on your recovery timeline or how firm you want everyday support to feel — and always follow your provider’s guidance after surgery.</p>
         <h2>Fit tips</h2>
-        <p>Use the size chart, note stretch fabric vs firm panels, and remember that the right size should smooth without cutting into your skin. Explore our <a href="/shop?category=SHAPEWEAR">Shapewear</a> collection to compare styles.</p>
+        <p>Use the size chart, note stretch fabric vs firm panels, and remember that the right size should smooth without cutting into your skin. Explore our <a href="/shop?category=shapewear">Shapewear</a> collection to compare styles.</p>
       `
     },
     '3': {
@@ -83,7 +84,28 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const post = posts[id] || posts['1'];
+  const post = posts[id];
+  if (!post) notFound();
+
+  const siteUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://baddiecurves.com').replace(/\/+$/, '');
+  const postUrl = `${siteUrl}/blog/${id}`;
+  const shareLinks = [
+    {
+      label: 'Share on Facebook',
+      icon: 'ri-facebook-fill',
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`
+    },
+    {
+      label: 'Share on X',
+      icon: 'ri-twitter-x-fill',
+      href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(post.title)}`
+    },
+    {
+      label: 'Share on WhatsApp',
+      icon: 'ri-whatsapp-line',
+      href: `https://wa.me/?text=${encodeURIComponent(`${post.title} ${postUrl}`)}`
+    }
+  ];
 
   const relatedPosts = [
     {
@@ -139,7 +161,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <article className="prose prose-lg max-w-none">
           <div
-            className="text-gray-600 leading-relaxed"
+            className="text-gray-600 leading-relaxed [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mt-10 [&_h2]:mb-3 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ul]:space-y-1 [&_a]:text-blue-700 [&_a]:font-semibold [&_a]:underline"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
             style={{
               fontSize: '1.125rem',
@@ -165,15 +187,18 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
             <div>
               <p className="text-sm text-gray-500 mb-3">Share this article</p>
               <div className="flex gap-3">
-                <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer">
-                  <i className="ri-facebook-fill text-gray-600"></i>
-                </button>
-                <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer">
-                  <i className="ri-twitter-fill text-gray-600"></i>
-                </button>
-                <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer">
-                  <i className="ri-whatsapp-line text-gray-600"></i>
-                </button>
+                {shareLinks.map((link) => (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={link.label}
+                    className="w-11 h-11 bg-gray-100 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
+                  >
+                    <i className={`${link.icon} text-gray-600`}></i>
+                  </a>
+                ))}
               </div>
             </div>
           </div>

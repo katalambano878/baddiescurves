@@ -115,18 +115,6 @@ export default function SignupPage() {
       if (error) throw error;
 
       if (data.user) {
-        // Send Welcome Notification
-        fetch('/api/notifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'welcome',
-            payload: {
-              email: formData.email,
-              firstName: formData.firstName
-            }
-          })
-        }).catch(err => console.error('Welcome notification error:', err));
         // If Supabase confirms via email, data.session might be null initially
         if (!data.session) {
           setSuccess(true);

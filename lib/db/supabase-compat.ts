@@ -448,7 +448,9 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any; count: number
     if (value === null || value === "null") return `${ident(col)} IS NULL`;
     if (value === true || value === "true") return `${ident(col)} IS TRUE`;
     if (value === false || value === "false") return `${ident(col)} IS FALSE`;
-    return `${ident(col)} IS NOT DISTINCT FROM ${value}`;
+    if (value === "unknown") return `${ident(col)} IS UNKNOWN`;
+    // Never put a caller-supplied value into the SQL text.
+    throw new Error("The is filter only accepts null, true, false or unknown");
   }
 
   private cmpClause(col: string, op: string, value: any, params: any[]): string {
@@ -552,11 +554,17 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any; count: number
       });
       sql += ` ORDER BY ${parts.join(", ")}`;
     }
+    const whole = (n: unknown, max: number) => {
+      const v = Math.floor(Number(n));
+      if (!Number.isFinite(v) || v < 0) throw new Error("Invalid limit or range");
+      return Math.min(v, max);
+    };
     if (this.rangeFrom !== null && this.rangeTo !== null) {
-      const limit = this.rangeTo - this.rangeFrom + 1;
-      sql += ` LIMIT ${limit} OFFSET ${this.rangeFrom}`;
+      const from = whole(this.rangeFrom, 10_000_000);
+      const limit = whole(this.rangeTo - this.rangeFrom + 1, 10_000);
+      sql += ` LIMIT ${limit} OFFSET ${from}`;
     } else if (this.limitN !== null) {
-      sql += ` LIMIT ${this.limitN}`;
+      sql += ` LIMIT ${whole(this.limitN, 10_000)}`;
     }
     return sql;
   }

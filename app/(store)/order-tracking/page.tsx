@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { useCurrency } from '@/lib/currency';
+import { formatMoney } from '@/lib/format-money';
 
 function OrderTrackingContent() {
-  const { formatPrice } = useCurrency();
   const searchParams = useSearchParams();
   const urlOrderNumber = searchParams.get('order') || '';
   
@@ -52,6 +51,7 @@ function OrderTrackingContent() {
           status,
           payment_status,
           total,
+          currency,
           email,
           created_at,
           shipping_address,
@@ -327,7 +327,7 @@ function OrderTrackingContent() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total</p>
-                  <p className="font-semibold text-gray-900">{formatPrice(Number(order.total))}</p>
+                  <p className="font-semibold text-gray-900">{formatMoney(order.total, order.currency)}</p>
                 </div>
               </div>
             </div>
@@ -415,7 +415,7 @@ function OrderTrackingContent() {
                     <p className="text-xs text-gray-500">{item.variant_name}</p>
                   )}
                 </div>
-                <p className="font-bold text-blue-700">{formatPrice(Number(item.unit_price))}</p>
+                <p className="font-bold text-blue-700">{formatMoney(item.unit_price, order.currency)}</p>
               </div>
             ))}
           </div>

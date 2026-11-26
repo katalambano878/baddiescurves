@@ -1,20 +1,21 @@
 'use client';
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import { money } from '@/lib/format-money';
+import { formatMoney, formatMoneyByCurrency } from '@/lib/format-money';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { isRealEmail, ordersForCustomer, paidSummary } from '../match-orders';
 
 export default function CustomerDetailsPage() {
-    const router = useRouter();
     const params = useParams();
     const customerId = params.id as string;
-    
+
     const [customer, setCustomer] = useState<any>(null);
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -25,39 +26,69 @@ export default function CustomerDetailsPage() {
 
     const fetchCustomerData = async () => {
         try {
-            // 1. Fetch Profile
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
+            setLoading(true);
+            setLoadError(null);
+
+            // 1. The customer row (the customers list links here with customers.id)
+            const { data: customerRow, error: customerError } = await supabase
+                .from('customers')
                 .select('*')
                 .eq('id', customerId)
-                .single();
+                .maybeSingle();
 
-            if (profileError) throw profileError;
-
-            // 2. Fetch Orders
-            const { data: ordersData, error: ordersError } = await supabase
-                .from('orders')
-                .select('*')
-                .eq('user_id', customerId)
-                .order('created_at', { ascending: false });
-
-            if (ordersError && ordersError.code !== 'PGRST116') { // Ignore not found if simply no orders? No, select returns empty array usually
-                // Actually select returns empty array if no match, not error.
+            if (customerError) throw new Error(customerError.message);
+            if (!customerRow) {
+                setCustomer(null);
+                setOrders([]);
+                return;
             }
 
-            setCustomer(profile);
-            setOrders(ordersData || []);
-        } catch (err) {
+            // 2. This customer's orders. Orders are guest orders (no user id), so they are
+            // matched by email or phone against the customer's main and secondary contacts.
+            const { data: ordersData, error: ordersError } = await supabase
+                .from('orders')
+                .select('id, order_number, email, phone, total, currency, status, payment_status, created_at')
+                .order('created_at', { ascending: false })
+                .limit(5000);
+
+            if (ordersError) throw new Error(ordersError.message);
+
+            setCustomer(customerRow);
+            setOrders(ordersForCustomer(customerRow, ordersData || []));
+        } catch (err: any) {
             console.error('Error fetching customer:', err);
+            setLoadError(err?.message || 'Could not load this customer.');
         } finally {
             setLoading(false);
         }
     };
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading customer details...</div>;
-    if (!customer) return <div className="p-8 text-center text-red-500">Customer not found</div>;
+    if (loadError) {
+        return (
+            <div className="p-8 text-center space-y-4">
+                <p className="text-red-500">Could not load this customer: {loadError}</p>
+                <button onClick={fetchCustomerData} className="text-blue-700 font-semibold hover:underline cursor-pointer">Try again</button>
+            </div>
+        );
+    }
+    if (!customer) {
+        return (
+            <div className="p-8 text-center space-y-4">
+                <p className="text-red-500">Customer not found</p>
+                <Link href="/admin/customers" className="inline-flex text-blue-700 hover:underline font-semibold">← Back to Customers</Link>
+            </div>
+        );
+    }
 
-    const totalSpent = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+    // Order count and spend come from the orders themselves: paid orders only, per currency.
+    const { paidCount, spent, lastPaidAt } = paidSummary(orders);
+    const displayName = customer.full_name ||
+        [customer.first_name, customer.last_name].filter(Boolean).join(' ') ||
+        'No Name';
+    // POS walk-in customers carry a placeholder address ending in @pos.local; that is not an email.
+    const emails = [customer.email, customer.secondary_email].filter(isRealEmail) as string[];
+    const phones = [customer.phone, customer.secondary_phone].filter(Boolean) as string[];
 
     return (
         <div className="max-w-7xl mx-auto">
@@ -68,43 +99,50 @@ export default function CustomerDetailsPage() {
                         <i className="ri-arrow-left-line text-xl"></i>
                     </Link>
                     <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 text-2xl font-bold">
-                        {customer.full_name?.charAt(0) || customer.email.charAt(0).toUpperCase()}
+                        {(displayName !== 'No Name' ? displayName : emails[0] || phones[0] || '?').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{customer.full_name || 'No Name'}</h1>
-                        <p className="text-gray-500">{customer.email}</p>
+                        <h1 className="text-3xl font-bold text-gray-900">{displayName}</h1>
+                        <p className="text-gray-500">{emails.length ? emails.join(' · ') : 'No email'}</p>
                     </div>
                 </div>
-                <div className="flex space-x-3">
-                    <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 cursor-pointer">
-                        <i className="ri-mail-send-line mr-2"></i>
-                        Send Email
-                    </button>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 cursor-pointer">
-                        Edit Customer
-                    </button>
-                </div>
+                {emails.length > 0 && (
+                    <div className="flex space-x-3">
+                        <a
+                            href={`mailto:${emails[0]}`}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 cursor-pointer"
+                        >
+                            <i className="ri-mail-send-line mr-2"></i>
+                            Send Email
+                        </a>
+                    </div>
+                )}
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <p className="text-sm font-medium text-gray-500 mb-1">Total Spent</p>
-                    <p className="text-2xl font-bold text-gray-900">GH₵{money(totalSpent)}</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatMoneyByCurrency(spent)}</p>
+                    <p className="text-xs text-gray-500 mt-1">Paid orders only</p>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <p className="text-sm font-medium text-gray-500 mb-1">Total Orders</p>
-                    <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+                    <p className="text-sm font-medium text-gray-500 mb-1">Paid Orders</p>
+                    <p className="text-2xl font-bold text-gray-900">{paidCount}</p>
+                    {orders.length > paidCount && (
+                        <p className="text-xs text-gray-500 mt-1">{orders.length - paidCount} more not paid</p>
+                    )}
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <p className="text-sm font-medium text-gray-500 mb-1">Last Order</p>
+                    <p className="text-sm font-medium text-gray-500 mb-1">Last Paid Order</p>
                     <p className="text-xl font-bold text-gray-900">
-                        {orders[0] ? new Date(orders[0].created_at).toLocaleDateString() : 'Never'}
+                        {lastPaidAt ? new Date(lastPaidAt).toLocaleDateString() : 'Never'}
                     </p>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <p className="text-sm font-medium text-gray-500 mb-1">Phone</p>
-                    <p className="text-lg font-bold text-gray-900">{customer.phone || 'N/A'}</p>
+                    <p className="text-lg font-bold text-gray-900">{phones[0] || 'N/A'}</p>
+                    {phones[1] && <p className="text-sm text-gray-600 mt-1">Also: {phones[1]}</p>}
                 </div>
             </div>
 
@@ -123,6 +161,7 @@ export default function CustomerDetailsPage() {
                                 <th className="px-6 py-4">Order ID</th>
                                 <th className="px-6 py-4">Date</th>
                                 <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4">Payment</th>
                                 <th className="px-6 py-4">Total</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -131,7 +170,7 @@ export default function CustomerDetailsPage() {
                             {orders.map(order => (
                                 <tr key={order.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 text-sm font-medium text-blue-600">
-                                        <Link href={`/admin/orders/${order.id}`}>#{order.id.slice(0, 8)}</Link>
+                                        <Link href={`/admin/orders/${order.id}`}>{order.order_number || `#${order.id.slice(0, 8)}`}</Link>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600">
                                         {new Date(order.created_at).toLocaleDateString()}
@@ -141,11 +180,16 @@ export default function CustomerDetailsPage() {
                                             ${order.status === 'completed' || order.status === 'delivered' ? 'bg-blue-100 text-blue-800' :
                                                 order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                                     order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
-                                            {order.status.replace('_', ' ')}
+                                            {String(order.status || 'pending').replace('_', ' ')}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm capitalize">
+                                        <span className={order.payment_status === 'paid' ? 'text-gray-900 font-medium' : 'text-amber-700'}>
+                                            {String(order.payment_status || 'pending').replace(/_/g, ' ')}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm font-bold text-gray-900">
-                                        GH₵{money(order.total || 0)}
+                                        {formatMoney(order.total, order.currency)}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <Link href={`/admin/orders/${order.id}`} className="text-gray-400 hover:text-blue-600">

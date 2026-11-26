@@ -52,9 +52,10 @@ const nextConfig: NextConfig = {
           { key: 'Content-Type', value: 'application/manifest+json' }
         ]
       },
-      // Cache storefront API routes aggressively (5 min CDN, revalidate in background)
+      // Only the public catalogue lists may be cached. Cart prices, orders,
+      // addresses and the live sale list must never be served from a cache.
       {
-        source: '/api/storefront/:path*',
+        source: '/api/storefront/:path(products|categories)',
         headers: [
           { key: 'Cache-Control', value: 'public, s-maxage=900, stale-while-revalidate=1800' }
         ]

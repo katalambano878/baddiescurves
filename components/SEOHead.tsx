@@ -29,7 +29,7 @@ export function generateMetadata({
   author,
   noindex = false
 }: SEOProps): Metadata {
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://example.com';
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baddiecurves.com';
   const defaultOgImage = `${siteUrl}/OG.jpg`;
   const resolvedOgImage = ogImage || defaultOgImage;
   const siteName = "BADDIECURVES";
@@ -161,7 +161,7 @@ export function generateBreadcrumbSchema(items: { name: string; url: string }[])
 }
 
 export function generateOrganizationSchema() {
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://example.com';
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baddiecurves.com';
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -175,7 +175,7 @@ export function generateOrganizationSchema() {
 }
 
 export function generateWebsiteSchema() {
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://example.com';
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baddiecurves.com';
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',

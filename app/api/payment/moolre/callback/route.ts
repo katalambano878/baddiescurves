@@ -81,8 +81,11 @@ export async function POST(req: Request) {
                 console.error('[Callback] Secret mismatch or missing! Rejecting callback.');
                 return NextResponse.json({ success: false, message: 'Invalid callback signature' }, { status: 403 });
             }
+        } else if (process.env.NODE_ENV === 'production') {
+            // Without the secret anyone could post a fake "paid" callback.
+            console.error('[Callback] MOOLRE_CALLBACK_SECRET is not set. Refusing callback.');
+            return NextResponse.json({ success: false, message: 'Callback not configured' }, { status: 503 });
         } else {
-            // Log a warning if no secret is configured — this should be fixed
             console.warn('[Callback] WARNING: MOOLRE_CALLBACK_SECRET not configured. Callback origin cannot be verified.');
         }
 
@@ -308,7 +311,9 @@ export async function POST(req: Request) {
                             moolre_callback_code: body.code || null
                         }
                     })
-                    .eq('order_number', merchantOrderRef);
+                    .eq('order_number', merchantOrderRef)
+                    // A late "failed" callback must never undo a payment that went through.
+                    .neq('payment_status', 'paid');
             }
 
             return NextResponse.json({ success: false, message: 'Payment not successful' });

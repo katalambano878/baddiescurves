@@ -105,7 +105,7 @@ export default function FAQsPage() {
     {
       category: 'account',
       question: 'Do I need an account to place an order?',
-      answer: 'No, you can checkout as a guest. However, creating an account lets you track orders, save addresses, view purchase history, manage your wishlist, and receive exclusive offers. It only takes 30 seconds to sign up.'
+      answer: 'No, you can checkout as a guest. However, creating an account lets you track orders, save addresses, and view your purchase history.'
     },
     {
       category: 'account',
@@ -115,17 +115,12 @@ export default function FAQsPage() {
     {
       category: 'account',
       question: 'Can I have multiple delivery addresses?',
-      answer: 'Yes! You can save multiple delivery addresses in your account. During checkout, simply select the address you want to use or add a new one. This is perfect for sending gifts or alternating between work and home.'
+      answer: 'Yes! You can save multiple delivery addresses in your account, under Addresses, and choose which one is your default.'
     },
     {
       category: 'account',
       question: 'How do I update my account information?',
-      answer: 'Log in to your account and go to "Account Settings". You can update your name, email, phone number, password, and saved addresses. Changes are saved instantly and you\'ll receive a confirmation email.'
-    },
-    {
-      category: 'account',
-      question: 'What are loyalty points and how do they work?',
-      answer: 'Earn 1 point for every GHS 10 spent. 100 points = GHS 10 discount on your next purchase. Points are automatically added to your account after each order. Check your points balance in your account dashboard.'
+      answer: 'Sign in and open your account. You can update your name, phone number, password, and saved addresses there.'
     }
   ];
 

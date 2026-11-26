@@ -13,6 +13,12 @@ const inFlight = new Map<string, Promise<any>>();
 
 const DEFAULT_TTL = 10 * 60 * 1000; // 10 minutes — reduce re-fetches during browsing
 
+function hasQueryError(result: unknown): boolean {
+  if (!result || typeof result !== 'object') return false;
+  if (Array.isArray(result)) return result.some(hasQueryError);
+  return Boolean((result as { error?: unknown }).error);
+}
+
 /**
  * Get data from cache or fetch it fresh
  */
@@ -32,9 +38,16 @@ export async function cachedQuery<T>(
     return pending as Promise<T>;
   }
 
-  const promise = queryFn()
+  // A failed query must not be remembered: Supabase-style calls resolve with
+  // `{ data, error }` instead of throwing, so a result that carries an error is
+  // returned to the caller but never cached. A rejected promise skips `.then`
+  // and is not cached either.
+  const promise = Promise.resolve()
+    .then(queryFn)
     .then((data) => {
-      cache.set(key, { data, timestamp: Date.now() });
+      if (!hasQueryError(data)) {
+        cache.set(key, { data, timestamp: Date.now() });
+      }
       return data;
     })
     .finally(() => {

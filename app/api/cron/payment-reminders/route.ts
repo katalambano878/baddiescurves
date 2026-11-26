@@ -10,7 +10,8 @@ export async function GET(request: Request) {
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
     
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // No secret configured means nobody may trigger reminders.
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -19,13 +20,18 @@ export async function GET(request: Request) {
     // 2. Were created more than 15 minutes ago
     // 3. Haven't had a reminder sent yet
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    // Only recent orders still waiting for payment. Old, failed, refunded or
+    // cancelled orders never get a reminder.
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
     const { data: pendingOrders, error } = await supabaseAdmin
       .from('orders')
-      .select('id, order_number, email, phone, total, shipping_address, metadata')
-      .neq('payment_status', 'paid')
+      .select('id, order_number, email, phone, total, currency, status, shipping_address, metadata')
+      .eq('payment_status', 'pending')
+      .neq('status', 'cancelled')
       .eq('payment_reminder_sent', false)
       .lt('created_at', fifteenMinutesAgo)
+      .gt('created_at', twoDaysAgo)
       .order('created_at', { ascending: true })
       .limit(50); // Process max 50 at a time to avoid timeout
 

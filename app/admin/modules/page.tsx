@@ -28,39 +28,22 @@ const colorMap: Record<string, string> = {
 export default function ModulesPage() {
   const [loading, setLoading] = useState(true);
 
-  // Base definitions of modules
+  // Only switches that control something are listed. Each one shows or hides
+  // a page in the admin menu (see menuItems in app/admin/layout.tsx).
   const [modules, setModules] = useState<Module[]>([
     {
       id: 'notifications',
-      name: 'Marketing Notifications',
-      description: 'Send Email and SMS campaigns to customers',
+      name: 'Notifications',
+      description: 'Shows the Notifications page in the admin menu. That page sends email and SMS campaigns to customers.',
       icon: 'ri-notification-3-line',
       color: 'red',
       enabled: false,
       category: 'Marketing'
     },
     {
-      id: 'cms',
-      name: 'CMS / Pages',
-      description: 'Manage website content, policies, and landing pages',
-      icon: 'ri-file-list-line',
-      color: 'blue',
-      enabled: false,
-      category: 'Content'
-    },
-    {
-      id: 'homepage',
-      name: 'Homepage Config',
-      description: 'Customize homepage sections and banners',
-      icon: 'ri-home-gear-line',
-      color: 'purple',
-      enabled: false,
-      category: 'Content'
-    },
-    {
       id: 'blog',
-      name: 'Blog Management',
-      description: 'Create and manage blog posts',
+      name: 'Blog',
+      description: 'Shows the Blog page in the admin menu.',
       icon: 'ri-article-line',
       color: 'teal',
       enabled: false,
@@ -69,43 +52,18 @@ export default function ModulesPage() {
     {
       id: 'customer-insights',
       name: 'Customer Insights',
-      description: 'Advanced analytics on customer behavior',
+      description: 'Shows the Customer Insights page in the admin menu.',
       icon: 'ri-user-search-line',
       color: 'orange',
       enabled: false,
       category: 'Analytics'
-    },
-    {
-      id: 'flash-sales',
-      name: 'Flash Sales',
-      description: 'Time-limited promotional sales with countdown timers',
-      icon: 'ri-flashlight-line',
-      color: 'amber',
-      enabled: false,
-      category: 'Marketing'
-    },
-    {
-      id: 'loyalty-program',
-      name: 'Loyalty Program',
-      description: 'Points and rewards system for customer retention',
-      icon: 'ri-trophy-line',
-      color: 'yellow',
-      enabled: false,
-      category: 'Marketing'
-    },
-    {
-      id: 'pwa-settings',
-      name: 'PWA / Mobile App',
-      description: 'Configure Progressive Web App settings',
-      icon: 'ri-smartphone-line',
-      color: 'indigo',
-      enabled: false,
-      category: 'Mobile'
     }
   ]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchModuleStates();
@@ -119,98 +77,54 @@ export default function ModulesPage() {
       if (data) {
         setModules(prev => prev.map(m => {
           const dbState = data.find((d: any) => d.id === m.id);
-          return dbState ? { ...m, enabled: dbState.enabled } : m;
+          return dbState ? { ...m, enabled: !!dbState.enabled } : m;
         }));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching modules:', err);
+      setSaveError(`Could not load the current settings: ${err?.message || 'unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
 
   const toggleModule = async (id: string, currentState: boolean) => {
+    if (savingId) return;
     const newState = !currentState;
+    const setEnabled = (enabled: boolean) =>
+      setModules(prev => prev.map(m => (m.id === id ? { ...m, enabled } : m)));
 
-    // Optimistic Update
-    setModules(modules.map(m =>
-      m.id === id ? { ...m, enabled: newState } : m
-    ));
+    setSavingId(id);
+    setSaveError(null);
+    setEnabled(newState); // show the change straight away
 
     try {
-      const { error } = await supabase
+      // No upsert here: update the row when it exists, insert only when it does not.
+      const existing = await supabase
         .from('store_modules')
-        .upsert({ id, enabled: newState, updated_at: new Date().toISOString() });
+        .select('id')
+        .eq('id', id)
+        .maybeSingle();
+      if (existing.error) throw new Error(existing.error.message);
 
-      if (error) {
-        throw error;
-      }
+      const updated_at = new Date().toISOString();
+      const { error } = existing.data
+        ? await supabase.from('store_modules').update({ enabled: newState, updated_at }).eq('id', id)
+        : await supabase.from('store_modules').insert({ id, enabled: newState, updated_at });
+      if (error) throw new Error(error.message);
 
-      window.location.reload();
-
-    } catch (err) {
+      // Tell the admin menu (app/admin/layout.tsx) to re-read the switches.
+      window.dispatchEvent(new Event('store-modules-changed'));
+    } catch (err: any) {
       console.error('Error updating module:', err);
-      alert('Failed to update settings');
+      setEnabled(currentState); // put the switch back
+      setSaveError(`The change was not saved: ${err?.message || 'unknown error'}`);
+    } finally {
+      setSavingId(null);
     }
   };
 
   const categories = ['all', ...Array.from(new Set(modules.map(m => m.category)))];
-
-  /* Lock Screen Logic */
-  const [isLocked, setIsLocked] = useState(true);
-  const [pin, setPin] = useState('');
-  const [pinError, setPinError] = useState('');
-
-  const handleUnlock = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pin === '6526') {
-      setIsLocked(false);
-    } else {
-      setPinError('Incorrect PIN');
-      setPin('');
-    }
-  };
-
-  if (isLocked) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center border border-gray-100">
-          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <i className="ri-lock-2-line text-4xl text-blue-600"></i>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Restricted Access</h2>
-          <p className="text-gray-500 mb-8">Please enter the security PIN to access Modules.</p>
-
-          <form onSubmit={handleUnlock} className="space-y-4">
-            <div>
-              <input
-                type="password"
-                value={pin}
-                onChange={(e) => {
-                  setPin(e.target.value);
-                  setPinError('');
-                }}
-                className="w-full text-center text-3xl font-bold tracking-widest px-4 py-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
-                placeholder="• • • •"
-                maxLength={4}
-                autoFocus
-              />
-            </div>
-            {pinError && (
-              <p className="text-red-500 text-sm font-medium animate-pulse">{pinError}</p>
-            )}
-            <button
-              type="submit"
-              className="w-full bg-gray-900 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-colors text-lg"
-            >
-              Unlock Dashboard
-            </button>
-          </form>
-
-        </div>
-      </div>
-    );
-  }
 
   const filteredModules = modules.filter(module => {
     const matchesSearch = module.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -231,7 +145,15 @@ export default function ModulesPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Modules & Features</h1>
-        <p className="text-gray-600 mb-8">Enable or disable features to customize your admin dashboard.</p>
+        <p className="text-gray-600 mb-8">
+          These switches show or hide pages in the admin menu. A hidden page can still be opened by its address.
+        </p>
+
+        {saveError && (
+          <div role="alert" className="mb-6 p-4 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">
+            {saveError}
+          </div>
+        )}
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex gap-4">
@@ -270,17 +192,22 @@ export default function ModulesPage() {
                           <i className={`${module.icon} text-2xl`}></i>
                         </div>
                         <button
+                          type="button"
+                          role="switch"
+                          aria-checked={module.enabled}
+                          aria-label={`${module.name}: ${module.enabled ? 'shown in the menu' : 'hidden from the menu'}`}
+                          disabled={savingId !== null}
                           onClick={() => toggleModule(module.id, module.enabled)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${module.enabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer disabled:cursor-wait ${module.enabled ? 'bg-blue-600' : 'bg-gray-300'}`}
                         >
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${module.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
                         </button>
                       </div>
                       <h3 className="text-lg font-bold text-gray-900">{module.name}</h3>
-                      <p className="text-sm text-gray-500 mt-1 h-10">{module.description}</p>
+                      <p className="text-sm text-gray-500 mt-1 min-h-[2.5rem]">{module.description}</p>
                       <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
                         <span className={`text-xs font-bold px-2 py-1 rounded-full ${module.enabled ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                          {module.enabled ? 'Enabled' : 'Disabled'}
+                          {savingId === module.id ? 'Saving...' : module.enabled ? 'Shown in menu' : 'Hidden from menu'}
                         </span>
                       </div>
                     </div>

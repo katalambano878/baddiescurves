@@ -112,6 +112,10 @@ export default function ReviewsSection() {
     };
   }, []);
 
+  // Nothing to show yet (or still loading): no section at all, rather than an
+  // empty box. It appears by itself once the first review is approved.
+  if (loading || reviews.length === 0) return null;
+
   return (
     <section className="py-16 md:py-24 bg-stone-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -127,7 +131,7 @@ export default function ReviewsSection() {
               </span>
             </h2>
             <p className="mt-3 text-gray-600 max-w-xl">
-              Real feedback from shoppers — only reviews approved in admin appear here.
+              Real feedback from shoppers.
             </p>
           </div>
           <Link
@@ -138,25 +142,7 @@ export default function ReviewsSection() {
           </Link>
         </AnimatedSection>
 
-        {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="h-56 rounded-[1.75rem] bg-white border border-gray-100 animate-pulse"
-              />
-            ))}
-          </div>
-        ) : reviews.length === 0 ? (
-          <div className="rounded-[2rem] border border-dashed border-gray-200 bg-white px-8 py-16 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-stone-50 border border-gray-100">
-              <i className="ri-chat-smile-2-line text-xl text-gray-400" />
-            </div>
-            <p className="text-gray-600 max-w-md mx-auto">
-              Approved reviews will show here. Moderate submissions in Admin → Reviews.
-            </p>
-          </div>
-        ) : (
+        {(
           <AnimatedGrid className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
             {reviews.map((review) => {
               const CardInner = (
@@ -166,9 +152,11 @@ export default function ReviewsSection() {
                     <span className="text-[11px] text-gray-400 whitespace-nowrap">{review.date}</span>
                   </div>
                   <h3 className="font-serif text-lg text-gray-900 mb-2 line-clamp-2">{review.title}</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed line-clamp-4 mb-6">
-                    {review.content || 'Great product experience with BADDIECURVES.'}
-                  </p>
+                  {review.content && (
+                    <p className="text-sm text-gray-600 leading-relaxed line-clamp-4 mb-6">
+                      {review.content}
+                    </p>
+                  )}
                   <div className="mt-auto flex items-center gap-3 pt-4 border-t border-gray-100">
                     <div className="relative h-11 w-11 overflow-hidden rounded-full bg-stone-50 border border-gray-100 shrink-0">
                       <Image

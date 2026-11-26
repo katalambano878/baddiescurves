@@ -41,6 +41,7 @@ export async function getPayPalAccessToken(): Promise<string> {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: 'grant_type=client_credentials',
+    signal: AbortSignal.timeout(20_000),
   });
 
   const data = await res.json();
@@ -56,9 +57,17 @@ export async function getPayPalAccessToken(): Promise<string> {
   return cachedToken.value;
 }
 
+/** PayPal order ids are short letter-and-digit strings. Anything else is refused before it reaches a URL. */
+function assertPayPalId(id: unknown): asserts id is string {
+  if (typeof id !== 'string' || !/^[A-Z0-9]{8,32}$/i.test(id)) {
+    throw new Error('Invalid PayPal order id');
+  }
+}
+
 async function paypalFetch(path: string, init: RequestInit = {}) {
   const token = await getPayPalAccessToken();
   const res = await fetch(`${paypalApiBase()}${path}`, {
+    signal: AbortSignal.timeout(20_000),
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -129,6 +138,7 @@ export async function createPayPalOrder(opts: {
 }
 
 export async function capturePayPalOrder(paypalOrderId: string): Promise<any> {
+  assertPayPalId(paypalOrderId);
   const { res, data } = await paypalFetch(`/v2/checkout/orders/${paypalOrderId}/capture`, {
     method: 'POST',
     body: JSON.stringify({}),
@@ -148,6 +158,7 @@ export async function capturePayPalOrder(paypalOrderId: string): Promise<any> {
 }
 
 export async function getPayPalOrder(paypalOrderId: string): Promise<any> {
+  assertPayPalId(paypalOrderId);
   const { res, data } = await paypalFetch(`/v2/checkout/orders/${paypalOrderId}`, {
     method: 'GET',
   });

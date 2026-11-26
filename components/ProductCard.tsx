@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import LazyImage from './LazyImage';
 import { useCart } from '@/context/CartContext';
-import { useCurrency } from '@/lib/currency';
+import { listingPrices, useCurrency } from '@/lib/currency';
 
 // Map common color names to hex values for swatches
 const COLOR_MAP: Record<string, string> = {
@@ -37,6 +37,62 @@ export function getColorHex(colorName: string): string | null {
 export interface ColorVariant {
   name: string;
   hex: string;
+}
+
+/** Shown when a product has no photo yet. */
+export const PRODUCT_PLACEHOLDER_IMAGE = '/placeholder-product.svg';
+
+/**
+ * Turns a product row (with its product_variants and product_images) into
+ * ProductCard props. One place for prices, sale state, stock and swatches, so
+ * every listing shows the same thing.
+ */
+export function mapProductToCard(product: any, opts: { badge?: string } = {}) {
+  const variants: any[] = product.product_variants || [];
+  const hasVariants = variants.length > 0;
+  const prices = listingPrices(product, variants);
+  const effectiveStock = hasVariants
+    ? variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0)
+    : product.quantity || 0;
+
+  const colorVariants: ColorVariant[] = [];
+  const seenColors = new Set<string>();
+  for (const v of variants) {
+    const colorName = v.option2;
+    if (colorName && !seenColors.has(colorName.toLowerCase().trim())) {
+      const hex = getColorHex(colorName);
+      if (hex) {
+        seenColors.add(colorName.toLowerCase().trim());
+        colorVariants.push({ name: colorName.trim(), hex });
+      }
+    }
+  }
+
+  const images: any[] = [...(product.product_images || [])].sort(
+    (a, b) => (a?.position ?? 0) - (b?.position ?? 0)
+  );
+
+  return {
+    id: product.id as string,
+    slug: product.slug as string,
+    name: product.name as string,
+    price: Number(product.price) || 0,
+    price_ghs: product.price_ghs != null ? Number(product.price_ghs) : null,
+    originalPrice: prices.wasUsd ?? undefined,
+    originalPrice_ghs: prices.wasGhs,
+    image: images[0]?.url || PRODUCT_PLACEHOLDER_IMAGE,
+    rating: product.rating_avg || 0,
+    reviewCount: product.review_count || 0,
+    badge: prices.onSale ? 'Sale' : opts.badge,
+    inStock: effectiveStock > 0,
+    maxStock: effectiveStock > 0 ? effectiveStock : 0,
+    moq: product.moq || 1,
+    category: product.categories?.name as string | undefined,
+    hasVariants,
+    minVariantPrice: hasVariants ? prices.minUsd : undefined,
+    minVariantPrice_ghs: hasVariants ? prices.minGhs : product.price_ghs != null ? Number(product.price_ghs) : null,
+    colorVariants,
+  };
 }
 
 interface ProductCardProps {
@@ -81,12 +137,23 @@ export default function ProductCard({
   minVariantPrice_ghs
 }: ProductCardProps) {
   const { addToCart } = useCart();
-  const { formatPrice, formatComparePrice, formatEquivalents, resolveAmount } = useCurrency();
+  const { formatPrice, formatComparePrice, formatEquivalents, resolveAmount, isGhana } = useCurrency();
   const cartMaxStock = Math.max(0, maxStock ?? 0);
   const cartPrice = resolveAmount(price, price_ghs);
   const [activeColor, setActiveColor] = useState<string | null>(null);
-  const displayPrice = hasVariants && minVariantPrice ? minVariantPrice : price;
-  const discount = originalPrice ? Math.round((1 - displayPrice / originalPrice) * 100) : 0;
+  const displayPrice = hasVariants && minVariantPrice != null ? minVariantPrice : price;
+  const displayPriceGhs = hasVariants ? minVariantPrice_ghs : price_ghs;
+  // Work the discount out in the currency this visitor sees.
+  const inCedis = isGhana && displayPriceGhs != null;
+  const shownPrice = inCedis ? Number(displayPriceGhs) : displayPrice;
+  const shownWas = inCedis ? originalPrice_ghs : originalPrice;
+  const discount =
+    shownWas != null && shownPrice > 0 && shownWas > shownPrice
+      ? Math.round((1 - shownPrice / shownWas) * 100)
+      : 0;
+  // No price in this visitor's market (for example no dollar price set yet).
+  const unavailable = !(shownPrice > 0);
+  const canBuy = inStock && !unavailable;
   const MAX_SWATCHES = 5;
 
   return (
@@ -122,7 +189,7 @@ export default function ProductCard({
         )}
 
         {/* Hover Actions */}
-        {inStock && (
+        {canBuy && (
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hidden lg:flex z-20 bg-black/[0.02] backdrop-blur-[2px]">
             {hasVariants ? (
               <span className="bg-white/95 backdrop-blur-2xl text-gray-900 border border-white/40 hover:bg-gray-900 hover:text-white hover:border-gray-900 px-6 py-3.5 rounded-full text-[10px] uppercase tracking-[0.2em] font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 flex items-center justify-center space-x-2 translate-y-4 group-hover:translate-y-0">
@@ -174,15 +241,17 @@ export default function ProductCard({
         )}
 
         <div className="flex flex-col items-center justify-center mt-auto pt-2">
-          {hasVariants && minVariantPrice ? (
-            <span className="text-gray-900 font-medium text-[13.5px] tracking-wide">From {formatPrice(minVariantPrice, minVariantPrice_ghs)}</span>
+          {unavailable ? (
+            <span className="text-gray-600 font-medium text-[12.5px] tracking-wide">Not available in your region yet</span>
+          ) : hasVariants && minVariantPrice != null ? (
+            <span className={`font-medium text-[13.5px] tracking-wide ${discount > 0 ? 'text-red-600' : 'text-gray-900'}`}>From {formatPrice(minVariantPrice, minVariantPrice_ghs)}</span>
           ) : (
-            <span className="text-gray-900 font-medium text-[13.5px] tracking-wide">{formatPrice(price, price_ghs)}</span>
+            <span className={`font-medium text-[13.5px] tracking-wide ${discount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{formatPrice(price, price_ghs)}</span>
           )}
-          {originalPrice && (
-            <span className="text-[12px] text-gray-400 line-through decoration-gray-300/70">{formatComparePrice(originalPrice, originalPrice_ghs)}</span>
+          {discount > 0 && (
+            <span className="text-[12px] text-gray-500 line-through decoration-gray-400/70">{formatComparePrice(originalPrice ?? 0, originalPrice_ghs)}</span>
           )}
-          {formatEquivalents(displayPrice) && (
+          {!unavailable && formatEquivalents(displayPrice) && (
             <span className="text-[11px] text-gray-500 mt-1">
               {formatEquivalents(displayPrice)}
             </span>
@@ -204,7 +273,7 @@ export default function ProductCard({
                 e.preventDefault();
                 addToCart({ id, name, price: cartPrice, image, quantity: moq, slug, maxStock: cartMaxStock, moq });
               }}
-              disabled={!inStock}
+              disabled={!canBuy}
               className="w-full bg-gray-50/50 border border-gray-200 text-gray-900 py-2.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-semibold hover:bg-gray-100 active:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               <span>{moq > 1 ? `Add ${moq}` : 'Add to Cart'}</span>

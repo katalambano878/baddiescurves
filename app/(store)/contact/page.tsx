@@ -38,6 +38,21 @@ export default function ContactPage() {
     fetchContactContent();
   }, []);
 
+  // "Get Help" on an order (and other links) arrive as /contact?order=…&subject=…
+  // Read once on load and only fill fields the visitor has not typed in.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const order = (params.get('order') || '').trim().slice(0, 60);
+    const subjectParam = (params.get('subject') || '').trim().slice(0, 120);
+    if (!order && !subjectParam) return;
+
+    let subject = subjectParam;
+    if (order && !subject.includes(order)) {
+      subject = subject ? `${subject} – order ${order}` : `Help with order ${order}`;
+    }
+    setFormData((prev) => (prev.subject ? prev : { ...prev, subject }));
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -63,10 +78,8 @@ export default function ContactPage() {
           message: formData.message,
         });
 
-      if (error) {
-        // Table might not exist, still show success
-        console.log('Note: contact_submissions table may not exist');
-      }
+      // Not saved means not sent: show the error instead of a false "sent".
+      if (error) throw error;
 
       // Send Contact Notification
       fetch('/api/notifications', {
@@ -149,7 +162,7 @@ export default function ContactPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl focus:bg-white focus:shadow-[0_8px_30px_rgba(0,0,0,0.04)] focus:border-gray-300 focus:ring-0 transition-all duration-300 outline-none text-gray-800 placeholder:text-gray-400"
-                  placeholder="John Doe"
+                  placeholder="Your name"
                 />
               </div>
 
@@ -165,7 +178,7 @@ export default function ContactPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl focus:bg-white focus:shadow-[0_8px_30px_rgba(0,0,0,0.04)] focus:border-gray-300 focus:ring-0 transition-all duration-300 outline-none text-gray-800 placeholder:text-gray-400"
-                  placeholder="john@example.com"
+                  placeholder="you@example.com"
                 />
                 </div>
               </div>
@@ -235,7 +248,7 @@ export default function ContactPage() {
                   <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-3 shrink-0">
                     <i className="ri-error-warning-line"></i>
                   </div>
-                  <span className="text-sm font-medium">Failed to send message. Please try again.</span>
+                  <span className="text-sm font-medium">Your message was not sent. Check your connection and try again, or reach us on WhatsApp.</span>
                 </div>
               )}
 

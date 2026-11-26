@@ -15,6 +15,8 @@ export default function Header() {
   const [wishlistCount, setWishlistCount] = useState(0);
   const [user, setUser] = useState<any>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  // The Sale link only shows while at least one sale is live.
+  const [hasSale, setHasSale] = useState(false);
 
   const { cartCount, isCartOpen, setIsCartOpen } = useCart();
   const { getSetting } = useCMS();
@@ -27,6 +29,19 @@ export default function Header() {
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/storefront/sale?count=1', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : { count: 0 }))
+      .then((json) => {
+        if (!cancelled) setHasSale(Number(json?.count) > 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -96,19 +111,23 @@ export default function Header() {
               <div className="hidden lg:flex items-center justify-center space-x-12">
                 {[
                   { label: 'Shop', href: '/shop' },
+                  ...(hasSale ? [{ label: 'Sale', href: '/sale' }] : []),
                   { label: 'Categories', href: '/categories' },
                   { label: 'About', href: '/about' },
                   { label: 'Contact', href: '/contact' },
-                ].map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`group relative py-2 text-[11px] uppercase tracking-[0.2em] font-bold transition-colors duration-500 ${isScrolled ? 'text-gray-900 hover:text-gray-900' : 'text-gray-400 hover:text-gray-900'}`}
-                  >
-                    {link.label}
-                    <span className="absolute inset-x-0 bottom-0 h-px origin-center scale-x-0 bg-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] group-hover:scale-x-100" />
-                  </Link>
-                ))}
+                ].map((link) => {
+                  const isSale = link.href === '/sale';
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`group relative py-2 text-[11px] uppercase tracking-[0.2em] font-bold transition-colors duration-500 ${isSale ? 'text-red-600 hover:text-red-700' : isScrolled ? 'text-gray-900 hover:text-gray-900' : 'text-gray-400 hover:text-gray-900'}`}
+                    >
+                      {link.label}
+                      <span className={`absolute inset-x-0 bottom-0 h-px origin-center scale-x-0 transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] group-hover:scale-x-100 ${isSale ? 'bg-red-600' : 'bg-gray-900'}`} />
+                    </Link>
+                  );
+                })}
               </div>
 
               {/* Right: Icons */}
@@ -236,6 +255,7 @@ export default function Header() {
               {[
                 { label: 'Home', href: '/' },
                 { label: 'Shop', href: '/shop' },
+                ...(hasSale ? [{ label: 'Sale', href: '/sale' }] : []),
                 { label: 'Categories', href: '/categories' },
                 { label: 'About', href: '/about' },
                 { label: 'Contact', href: '/contact' },
@@ -243,7 +263,7 @@ export default function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="block px-4 py-3 text-lg font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
+                  className={`block px-4 py-3 text-lg font-medium rounded-lg transition-colors ${link.href === '/sale' ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.label}

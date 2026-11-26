@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { money } from '@/lib/format-money';
+import { formatMoney, money, normalizeCurrency } from '@/lib/format-money';
 import { Resend } from 'resend';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { escapeHtml } from '@/lib/sanitize';
@@ -66,7 +66,7 @@ async function markNotificationSent(idempotencyLike: {
 
 const resend = new Resend(process.env.RESEND_API_KEY || 'missing_api_key');
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'baddiecurves@gmail.com';
-const EMAIL_FROM = process.env.EMAIL_FROM || "BADDIECURVES <noreply@example.com>";
+const EMAIL_FROM = process.env.EMAIL_FROM || "BADDIECURVES <noreply@baddiecurves.com>";
 const BRAND = {
     name: "BADDIECURVES",
     color: '#2563eb',
@@ -91,7 +91,7 @@ ${preheader ? `<span style="display:none;max-height:0;overflow:hidden;">${prehea
 <!-- Header -->
 <tr><td style="background:linear-gradient(135deg,${BRAND.color},${BRAND.colorDark});padding:32px 40px;text-align:center;">
 <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:0.5px;">${BRAND.name}</h1>
-<p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">Premium Quality Products</p>
+<p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">Waist trainers, shapewear &amp; activewear</p>
 </td></tr>
 
 <!-- Body -->
@@ -287,6 +287,16 @@ export async function sendSMS({
     }
 }
 
+/** An order amount in the order's own currency, for emails: "GH₵440.00" or "$67.00". */
+function orderMoney(order: any, amount: unknown): string {
+    return formatMoney(amount, order?.currency);
+}
+
+/** The same for texts, in plain letters so the message stays a normal-size SMS: "GHS 440.00". */
+function orderMoneySms(order: any, amount: unknown): string {
+    return `${normalizeCurrency(order?.currency)} ${money(amount)}`;
+}
+
 export async function sendOrderConfirmation(order: any) {
     const { id, email, phone: orderPhone, shipping_address, total, created_at, order_number, metadata } = order;
 
@@ -355,7 +365,7 @@ export async function sendOrderConfirmation(order: any) {
   ${emailInfoRow('Order Number', `#${order_number || id}`)}
   ${emailInfoRow('Order Date', new Date(created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }))}
   ${trackingNumber ? emailInfoRow('Tracking', trackingNumber) : ''}
-  ${emailInfoRow('Total', `GH₵${money(total)}`)}
+  ${emailInfoRow('Total', orderMoney(order, total))}
 </table>
 
 ${emailShippingNotes(shippingNotes)}
@@ -396,7 +406,7 @@ ${emailButton('Track Your Order', trackingUrl)}
   ${emailInfoRow('Order', `#${order_number || id}`)}
   ${emailInfoRow('Customer', `${name}`)}
   ${emailInfoRow('Email', email)}
-  ${emailInfoRow('Total', `GH₵${money(total)}`)}
+  ${emailInfoRow('Total', orderMoney(order, total))}
   ${trackingNumber ? emailInfoRow('Tracking', trackingNumber) : ''}
 </table>
 
@@ -556,7 +566,7 @@ export async function sendWelcomeMessage(user: { email: string, firstName: strin
   <p style="margin:0;color:#6b7280;font-size:15px;">We're so glad you're here.</p>
 </div>
 
-<p style="color:#374151;font-size:14px;line-height:1.7;margin:16px 0;">Thank you for joining the ${BRAND.name} family. We source premium quality products directly from China at unbeatable prices &mdash; perfect for homes, businesses, and resellers.</p>
+<p style="color:#374151;font-size:14px;line-height:1.7;margin:16px 0;">Thank you for joining the ${BRAND.name} family. Waist trainers, shapewear, post-op and activewear for every curve.</p>
 
 <div style="background-color:#f9fafb;border-radius:12px;padding:20px;margin:20px 0;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -632,12 +642,12 @@ export async function sendPaymentLink(order: any) {
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:12px;overflow:hidden;margin:20px 0;">
   ${emailInfoRow('Order Number', `#${order_number}`)}
-  ${emailInfoRow('Amount Due', `<span style="color:${BRAND.color};font-size:18px;font-weight:700;">GH₵${money(total)}</span>`)}
+  ${emailInfoRow('Amount Due', `<span style="color:${BRAND.color};font-size:18px;font-weight:700;">${orderMoney(order, total)}</span>`)}
 </table>
 
 <p style="color:#374151;font-size:14px;line-height:1.6;margin:16px 0;">Click the button below to securely complete your payment. This link will remain active until your order is completed or cancelled.</p>
 
-${emailButton('Pay Now — GH₵' + money(total), paymentUrl, '#d97706')}
+${emailButton('Pay Now: ' + orderMoney(order, total), paymentUrl, '#d97706')}
 
 <p style="color:#9ca3af;font-size:12px;text-align:center;margin:0;">Or copy this link: <a href="${paymentUrl}" style="color:${BRAND.color};">${paymentUrl}</a></p>
 `, `Complete payment for order #${order_number}`)
@@ -645,7 +655,7 @@ ${emailButton('Pay Now — GH₵' + money(total), paymentUrl, '#d97706')}
 
     // SMS with payment link
     if (phone) {
-        const smsMessage = `Hi ${name}, complete your order #${order_number} (GH₵${money(total)}) here: ${paymentUrl}`;
+        const smsMessage = `Hi ${name}, complete your order #${order_number} (${orderMoneySms(order, total)}) here: ${paymentUrl}`;
 
         await sendSMS({
             to: phone,

@@ -8,8 +8,11 @@ export const runtime = "nodejs";
 
 const PG_IDENT = /^[a-z_][a-z0-9_]*$/i;
 
-/** RPCs callable without admin (guest checkout). */
-const PUBLIC_RPCS = new Set(["upsert_customer_from_order"]);
+/**
+ * RPCs callable without admin. None: checkout creates the order and the
+ * customer record on the server (/api/storefront/orders).
+ */
+const PUBLIC_RPCS = new Set<string>([]);
 
 /** RPCs callable by admin/staff JWT (POS, etc.). */
 const ADMIN_RPCS = new Set([

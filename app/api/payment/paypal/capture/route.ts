@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { orderNumber, paypalOrderId: bodyPaypalId } = body;
+    const { orderNumber } = body;
 
     if (!orderNumber || typeof orderNumber !== 'string') {
       return NextResponse.json(
@@ -60,9 +60,9 @@ export async function POST(req: Request) {
       });
     }
 
-    const paypalOrderId =
-      (typeof bodyPaypalId === 'string' && bodyPaypalId) ||
-      order.metadata?.paypal_order_id;
+    // Only the PayPal order this shop created for this order counts. An id
+    // sent by the browser is never used.
+    const paypalOrderId = order.metadata?.paypal_order_id;
 
     if (!paypalOrderId) {
       return NextResponse.json(

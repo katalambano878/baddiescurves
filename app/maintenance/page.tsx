@@ -24,7 +24,11 @@ export default function MaintenancePage() {
           message:
             json.message ||
             "We're currently performing scheduled maintenance to improve your shopping experience. We'll be back online shortly.",
-          estimatedMinutes: json.estimatedMinutes ?? 30,
+          // Only show an estimate the shop has actually set.
+          estimatedMinutes:
+            typeof json.estimatedMinutes === 'number' && json.estimatedMinutes > 0
+              ? json.estimatedMinutes
+              : null,
         });
       } catch {
         if (!cancelled) {
@@ -32,7 +36,7 @@ export default function MaintenancePage() {
             enabled: true,
             message:
               "We're currently performing scheduled maintenance to improve your shopping experience. We'll be back online shortly.",
-            estimatedMinutes: 30,
+            estimatedMinutes: null,
           });
         }
       }

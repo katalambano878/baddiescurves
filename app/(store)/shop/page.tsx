@@ -4,57 +4,15 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import ProductCard, { type ColorVariant } from '@/components/ProductCard';
+import ProductCard, { mapProductToCard } from '@/components/ProductCard';
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton';
-import { getColorHex } from '@/components/ProductCard';
 import { supabase } from '@/lib/supabase';
 import PageHero from '@/components/PageHero';
-import { minVariantPrices, useCurrency } from '@/lib/currency';
+import { useCurrency } from '@/lib/currency';
 
 const PAGE_SIZE = 12;
 
-function formatShopProduct(p: any) {
-  const variants = p.product_variants || [];
-  const hasVariants = variants.length > 0;
-  const { minUsd, minGhs } = minVariantPrices(variants, p.price, p.price_ghs);
-  const totalVariantStock = hasVariants
-    ? variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0)
-    : 0;
-  const effectiveStock = hasVariants ? totalVariantStock : p.quantity;
-  const colorVariants: ColorVariant[] = [];
-  const seenColors = new Set<string>();
-  for (const v of variants) {
-    const colorName = v.option2;
-    if (colorName && !seenColors.has(colorName.toLowerCase().trim())) {
-      const hex = getColorHex(colorName);
-      if (hex) {
-        seenColors.add(colorName.toLowerCase().trim());
-        colorVariants.push({ name: colorName.trim(), hex });
-      }
-    }
-  }
-
-  return {
-    id: p.id,
-    slug: p.slug,
-    name: p.name,
-    price: p.price,
-    price_ghs: p.price_ghs,
-    originalPrice: p.compare_at_price,
-    image: p.product_images?.[0]?.url || 'https://via.placeholder.com/800x800?text=No+Image',
-    rating: p.rating_avg || 0,
-    reviewCount: 0,
-    badge: p.compare_at_price > p.price ? 'Sale' : undefined,
-    inStock: effectiveStock > 0,
-    maxStock: effectiveStock > 0 ? effectiveStock : 0,
-    moq: p.moq || 1,
-    category: p.categories?.name,
-    hasVariants,
-    minVariantPrice: hasVariants ? minUsd : undefined,
-    minVariantPrice_ghs: hasVariants ? minGhs : p.price_ghs,
-    colorVariants,
-  };
-}
+const formatShopProduct = (p: any) => mapProductToCard(p);
 
 function ShopContent() {
   usePageTitle('Shop All Products');
@@ -139,7 +97,7 @@ function ShopContent() {
                 *,
                 categories(name, slug),
                 product_images!product_id(url, position),
-                product_variants(id, name, price, price_ghs, quantity, option1, option2, image_url)
+                product_variants(id, name, price, price_ghs, compare_at_price, compare_at_price_ghs, quantity, option1, option2, image_url)
               `,
             { count: 'exact' }
           )

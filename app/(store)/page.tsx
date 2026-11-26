@@ -279,7 +279,7 @@ export default function Home() {
                   {/* Image scaling and styling */}
                   <div className="absolute inset-0 bg-gray-50"></div>
                   <Image
-                    src={category.image || category.image_url || 'https://via.placeholder.com/600x800?text=' + encodeURIComponent(category.name)}
+                    src={category.image || category.image_url || '/placeholder-product.svg'}
                     alt={category.name}
                     fill
                     className="object-cover object-center transition-all duration-[1500ms] group-hover:scale-105 opacity-90 group-hover:opacity-100 mix-blend-multiply"

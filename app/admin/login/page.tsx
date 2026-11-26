@@ -1,12 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 import { setAuthCookies } from '@/lib/auth-cookies';
+
+/**
+ * Where to go after login. Only an internal admin path is accepted
+ * ("/admin" or "/admin/..."); anything else falls back to the dashboard.
+ */
+function safeAdminPath(raw: string | null): string {
+  const fallback = '/admin';
+  if (!raw || !raw.startsWith('/admin')) return fallback;
+  // No other site, no protocol tricks, no control characters
+  const hasControlChar = raw.split('').some((ch) => ch.charCodeAt(0) < 32);
+  if (raw.startsWith('//') || raw.includes('\\') || raw.includes('://') || hasControlChar) return fallback;
+  const pathOnly = raw.split(/[?#]/)[0];
+  if (pathOnly !== '/admin' && !pathOnly.startsWith('/admin/')) return fallback;
+  if (pathOnly === '/admin/login' || pathOnly.startsWith('/admin/login/')) return fallback;
+  return raw;
+}
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -15,11 +31,27 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState<{ title: string; text: string } | null>(null);
+  const [redirectTo, setRedirectTo] = useState('/admin');
   const { getToken, verifying } = useRecaptcha();
+
+  // Read ?redirect= and ?error= once the page is in the browser.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setRedirectTo(safeAdminPath(params.get('redirect')));
+
+    const reason = params.get('error');
+    if (reason === 'unauthorized') {
+      setNotice({ title: 'No admin access', text: 'This account does not have admin access.' });
+    } else if (reason === 'session_expired') {
+      setNotice({ title: 'Session expired', text: 'Your session has expired. Please sign in again.' });
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNotice(null);
     setIsLoading(true);
 
     // reCAPTCHA verification
@@ -41,7 +73,7 @@ export default function AdminLoginPage() {
       if (data.session) {
         // Cookie must work on http (staging/local) and https — Secure only when HTTPS
         setAuthCookies(data.session.access_token, data.session.refresh_token);
-        router.replace('/admin');
+        router.replace(redirectTo);
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -62,6 +94,16 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+          {notice && !error && (
+            <div role="alert" className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-3">
+              <i className="ri-information-line text-amber-600 text-xl mt-0.5"></i>
+              <div>
+                <p className="text-amber-900 font-semibold">{notice.title}</p>
+                <p className="text-amber-800 text-sm mt-1">{notice.text}</p>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3">
               <i className="ri-error-warning-line text-red-600 text-xl mt-0.5"></i>

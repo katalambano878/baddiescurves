@@ -13,6 +13,9 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Why a category could not be deleted and what to move first
+  const [deleteNotice, setDeleteNotice] = useState<{ title: string; steps: string[] } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -60,16 +63,68 @@ export default function AdminCategoriesPage() {
     setShowEditModal(true);
   };
 
+  // Short list of names for a message: "A, B, C and 4 more"
+  const nameList = (rows: any[]) => {
+    const names = rows.map((r) => (r.name || '').trim() || 'No name');
+    return names.length > 3
+      ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`
+      : names.join(', ');
+  };
+
   const handleDelete = async (categoryId: string) => {
-    if (!confirm('Are you sure you want to delete this category? Products in it will have no category.')) return;
+    if (deletingId) return;
+    const name = categories.find((c) => c.id === categoryId)?.name || 'This category';
+    setDeleteNotice(null);
+    setDeletingId(categoryId);
     try {
-      await supabase.from('products').update({ category_id: null }).eq('category_id', categoryId);
+      // A category that still holds sub-categories or products is not deleted,
+      // and nothing is moved or deleted for the admin. Say what to move first.
+      const { data: children, error: childrenError } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('parent_id', categoryId);
+      if (childrenError) throw childrenError;
+
+      const { data: productsInside, error: productsError } = await supabase
+        .from('products')
+        .select('id, name')
+        .eq('category_id', categoryId);
+      if (productsError) throw productsError;
+
+      const steps: string[] = [];
+      if (children && children.length > 0) {
+        steps.push(
+          `${children.length} sub-categor${children.length === 1 ? 'y' : 'ies'} (${nameList(children)}): edit ${children.length === 1 ? 'it' : 'each one'} and choose another parent category, or "None (Top Level)".`
+        );
+      }
+      if (productsInside && productsInside.length > 0) {
+        steps.push(
+          `${productsInside.length} product${productsInside.length === 1 ? '' : 's'} (${nameList(productsInside)}): edit ${productsInside.length === 1 ? 'it' : 'each one'} on the Products page and choose another category.`
+        );
+      }
+      if (steps.length > 0) {
+        setDeleteNotice({
+          title: `"${name}" was not deleted because it is still in use. Move these first, then delete it:`,
+          steps
+        });
+        return;
+      }
+
+      if (!confirm(`Delete the category "${name}"? This cannot be undone.`)) return;
+
       const { error } = await supabase.from('categories').delete().eq('id', categoryId);
       if (error) throw error;
-      setCategories(categories.filter((c) => c.id !== categoryId));
-      alert('Category deleted successfully');
+      setCategories((prev) => prev.filter((c) => c.id !== categoryId));
     } catch (err: any) {
-      alert('Error deleting: ' + (err?.message ?? 'Please try again.'));
+      const message: string = err?.message || '';
+      setDeleteNotice({
+        title: /foreign key/i.test(message)
+          ? `"${name}" was not deleted because a sub-category or product still uses it. Move those to another category first, then delete it.`
+          : `"${name}" was not deleted. ${message || 'Check your connection and try again.'}`,
+        steps: []
+      });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -211,6 +266,29 @@ export default function AdminCategoriesPage() {
         </div>
       </div>
 
+      {deleteNotice && (
+        <div role="alert" className="p-4 bg-amber-50 border border-amber-300 rounded-lg flex items-start space-x-3">
+          <i className="ri-alert-line text-xl text-amber-600 mt-0.5"></i>
+          <div className="flex-1 text-sm text-amber-900">
+            <p className="font-semibold">{deleteNotice.title}</p>
+            {deleteNotice.steps.length > 0 && (
+              <ul className="mt-2 list-disc list-inside space-y-1">
+                {deleteNotice.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <button
+            onClick={() => setDeleteNotice(null)}
+            aria-label="Dismiss"
+            className="w-8 h-8 flex items-center justify-center text-amber-700 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-colors cursor-pointer"
+          >
+            <i className="ri-close-line text-lg"></i>
+          </button>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -275,9 +353,11 @@ export default function AdminCategoriesPage() {
                         </button>
                         <button
                           onClick={() => handleDelete(category.id)}
-                          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          disabled={deletingId !== null}
+                          aria-label={`Delete ${category.name}`}
+                          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <i className="ri-delete-bin-line text-lg w-4 h-4 flex items-center justify-center"></i>
+                          <i className={`${deletingId === category.id ? 'ri-loader-4-line animate-spin' : 'ri-delete-bin-line'} text-lg w-4 h-4 flex items-center justify-center`}></i>
                         </button>
                       </div>
                     </td>

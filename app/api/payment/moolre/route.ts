@@ -24,9 +24,10 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { orderId, customerEmail } = body;
 
-        if (!orderId || typeof orderId !== 'string') {
+        if (!orderId || typeof orderId !== 'string' || !/^[A-Za-z0-9-]{6,64}$/.test(orderId)) {
             return NextResponse.json({ success: false, message: 'Missing or invalid orderId' }, { status: 400 });
         }
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
 
         // Ensure environment variables are set
         if (!process.env.MOOLRE_API_USER || !process.env.MOOLRE_API_PUBKEY || !process.env.MOOLRE_ACCOUNT_NUMBER) {
@@ -38,9 +39,9 @@ export async function POST(req: Request) {
         // NEVER trust the amount from the client.
         const { data: order, error: orderError } = await supabaseAdmin
             .from('orders')
-            .select('id, order_number, total, email, payment_status, metadata')
-            .or(`id.eq.${orderId},order_number.eq.${orderId}`)
-            .single();
+            .select('id, order_number, total, currency, status, email, payment_status, metadata')
+            .eq(isUuid ? 'id' : 'order_number', orderId)
+            .maybeSingle();
 
         if (orderError || !order) {
             console.error('[Payment] Order not found:', orderId);
@@ -50,6 +51,19 @@ export async function POST(req: Request) {
         // Don't allow payment for already-paid orders
         if (order.payment_status === 'paid') {
             return NextResponse.json({ success: false, message: 'Order is already paid' }, { status: 400 });
+        }
+
+        if (order.status === 'cancelled') {
+            return NextResponse.json({ success: false, message: 'This order was cancelled. Please place a new order.' }, { status: 400 });
+        }
+
+        // Mobile Money charges cedis. An order priced in dollars must never be
+        // charged as the same number of cedis.
+        if (String(order.currency || 'GHS').toUpperCase() !== 'GHS') {
+            return NextResponse.json(
+                { success: false, message: 'Mobile Money is only for orders in Ghana cedis. Pay this order with PayPal.' },
+                { status: 400 }
+            );
         }
 
         // Use the database amount, NOT the client-provided amount
@@ -69,7 +83,7 @@ export async function POST(req: Request) {
         // Moolre Payload
         const payload = {
             type: 1,
-            amount: amount.toString(),
+            amount: amount.toFixed(2),
             email: process.env.MOOLRE_MERCHANT_EMAIL || 'admin@example.com',
             externalref: uniqueRef,
             callback: `${baseUrl}/api/payment/moolre/callback`,
@@ -92,7 +106,8 @@ export async function POST(req: Request) {
                 'X-API-USER': process.env.MOOLRE_API_USER,
                 'X-API-PUBKEY': process.env.MOOLRE_API_PUBKEY
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(20_000)
         });
 
         const result = await response.json();
@@ -118,6 +133,15 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error('Payment API Error:', error);
-        return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
+        const timedOut = error?.name === 'TimeoutError' || error?.name === 'AbortError';
+        return NextResponse.json(
+            {
+                success: false,
+                message: timedOut
+                    ? 'Mobile Money is taking too long to respond. Please try again in a moment.'
+                    : 'We could not start the payment. Please try again.'
+            },
+            { status: timedOut ? 504 : 500 }
+        );
     }
 }

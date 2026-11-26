@@ -4,12 +4,16 @@
 import Link from 'next/link';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
+import { formatMoney, formatMoneyByCurrency } from '@/lib/format-money';
+import { downloadCsv } from '../orders/csv';
+import { VIP_THRESHOLD, isRealEmail, isVip, ordersForCustomer, paidSummary } from './match-orders';
 
 export default function AdminCustomersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState('Sort by Join Date');
   const [filterStatus, setFilterStatus] = useState('All Customers');
 
@@ -21,168 +25,85 @@ export default function AdminCustomersPage() {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
+      setLoadError(null);
 
-      // Fetch from new customers table (includes both guests and registered users)
-      const { data: customerData, error: cError } = await supabase
-        .from('customers')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Customers table: guests and registered users alike.
+      // Orders are loaded beside it because order counts and spend are worked out from the
+      // orders themselves (paid only, per currency), matched by email or phone.
+      const [customersRes, ordersRes] = await Promise.all([
+        supabase
+          .from('customers')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('orders')
+          .select('id, email, phone, total, currency, payment_status, status, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5000)
+      ]);
 
-      if (cError) {
-        // Fallback to old profiles-based approach if customers table doesn't exist yet
-        console.warn('Customers table not available, falling back to profiles');
-        await fetchCustomersFromProfiles();
-        return;
-      }
+      if (customersRes.error) throw new Error(customersRes.error.message);
+      if (ordersRes.error) throw new Error(ordersRes.error.message);
 
-      if (customerData) {
-        const processed = customerData.map((customer: any) => {
-          // Determine status dynamically
-          let status = 'New';
-          const totalSpent = Number(customer.total_spent) || 0;
-          const totalOrders = customer.total_orders || 0;
+      const allOrders = ordersRes.data || [];
 
-          if (totalSpent > 1000) status = 'VIP';
-          else if (totalOrders > 0) status = 'Active';
-          else if (new Date(customer.created_at).getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000) status = 'Inactive';
+      const processed = (customersRes.data || []).map((customer: any) => {
+        const { paidCount, spent, lastPaidAt } = paidSummary(ordersForCustomer(customer, allOrders));
 
-          const displayName = customer.full_name ||
-            (customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : null) ||
-            customer.first_name ||
-            'No Name';
+        let status = 'New';
+        if (isVip(spent)) status = 'VIP';
+        else if (paidCount > 0) status = 'Active';
+        else if (new Date(customer.created_at).getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000) status = 'Inactive';
 
-          return {
-            id: customer.id,
-            name: displayName,
-            email: customer.email,
-            phone: customer.phone || 'N/A',
-            avatar: getInitials(displayName !== 'No Name' ? displayName : customer.email),
-            orders: totalOrders,
-            totalSpent: totalSpent,
-            joined: new Date(customer.created_at).toLocaleDateString(),
-            lastOrder: customer.last_order_at ? timeAgo(new Date(customer.last_order_at)) : 'Never',
-            status: status,
-            rawJoined: new Date(customer.created_at),
-            rawLastOrder: customer.last_order_at ? new Date(customer.last_order_at) : null,
-            isGuest: !customer.user_id
-          };
-        });
-        setCustomers(processed);
-      }
-    } catch (error) {
+        const displayName = customer.full_name ||
+          (customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : null) ||
+          customer.first_name ||
+          'No Name';
+        const hasEmail = isRealEmail(customer.email);
+
+        return {
+          id: customer.id,
+          name: displayName,
+          // POS walk-in customers carry a placeholder address; that is not an email.
+          email: hasEmail ? customer.email : '',
+          phone: customer.phone || 'N/A',
+          avatar: getInitials(displayName !== 'No Name' ? displayName : (hasEmail ? customer.email : customer.phone || '')),
+          orders: paidCount,
+          spent,
+          joined: new Date(customer.created_at).toLocaleDateString(),
+          lastOrder: lastPaidAt ? timeAgo(new Date(lastPaidAt)) : 'Never',
+          status: status,
+          rawJoined: new Date(customer.created_at),
+          rawLastOrder: lastPaidAt ? new Date(lastPaidAt) : null,
+          isGuest: !customer.user_id
+        };
+      });
+      setCustomers(processed);
+    } catch (error: any) {
       console.error('Error fetching customers:', error);
+      setLoadError(error?.message || 'Could not load customers.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Fallback for when customers table doesn't exist
-  const fetchCustomersFromProfiles = async () => {
-    try {
-      const { data: profiles, error: pError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (pError) throw pError;
-
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('id, user_id, email, total, created_at, status, shipping_address');
-
-      // Process registered users
-      const registeredCustomers = (profiles || []).map((profile: any) => {
-        const userOrders = orders?.filter(o => o.user_id === profile.id && o.status !== 'cancelled') || [];
-        const totalSpent = userOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
-        let lastOrderDate: Date | null = null;
-        if (userOrders.length > 0) {
-          const dates = userOrders.map(o => new Date(o.created_at).getTime());
-          lastOrderDate = new Date(Math.max(...dates));
-        }
-
-        let status = 'New';
-        if (totalSpent > 1000) status = 'VIP';
-        else if (userOrders.length > 0) status = 'Active';
-
-        return {
-          id: profile.id,
-          name: profile.full_name || 'No Name',
-          email: profile.email,
-          phone: profile.phone || 'N/A',
-          avatar: getInitials(profile.full_name || profile.email),
-          orders: userOrders.length,
-          totalSpent,
-          joined: new Date(profile.created_at).toLocaleDateString(),
-          lastOrder: lastOrderDate ? timeAgo(lastOrderDate) : 'Never',
-          status,
-          rawJoined: new Date(profile.created_at),
-          rawLastOrder: lastOrderDate,
-          isGuest: false
-        };
-      });
-
-      // Process guest orders (no user_id)
-      const guestOrders = orders?.filter(o => !o.user_id && o.email) || [];
-      const guestMap = new Map<string, any>();
-
-      guestOrders.forEach(order => {
-        const existing = guestMap.get(order.email);
-        const orderTotal = Number(order.total) || 0;
-        const orderDate = new Date(order.created_at);
-
-        const firstName = order.shipping_address?.firstName || '';
-        const lastName = order.shipping_address?.lastName || '';
-        const fullName = order.shipping_address?.full_name || `${firstName} ${lastName}`.trim();
-
-        if (!existing) {
-          guestMap.set(order.email, {
-            email: order.email,
-            name: fullName || 'Guest',
-            phone: order.shipping_address?.phone || 'N/A',
-            orders: order.status !== 'cancelled' ? 1 : 0,
-            totalSpent: order.status !== 'cancelled' ? orderTotal : 0,
-            firstOrder: orderDate,
-            lastOrder: orderDate
-          });
-        } else {
-          if (order.status !== 'cancelled') {
-            existing.orders += 1;
-            existing.totalSpent += orderTotal;
-          }
-          if (orderDate < existing.firstOrder) existing.firstOrder = orderDate;
-          if (orderDate > existing.lastOrder) existing.lastOrder = orderDate;
-          if (!existing.name || existing.name === 'Guest') existing.name = fullName || existing.name;
-        }
-      });
-
-      const guestCustomers = Array.from(guestMap.values()).map((guest, idx) => {
-        let status = 'New';
-        if (guest.totalSpent > 1000) status = 'VIP';
-        else if (guest.orders > 0) status = 'Active';
-
-        return {
-          id: `guest-${idx}-${guest.email}`,
-          name: guest.name || 'Guest',
-          email: guest.email,
-          phone: guest.phone,
-          avatar: getInitials(guest.name || guest.email),
-          orders: guest.orders,
-          totalSpent: guest.totalSpent,
-          joined: guest.firstOrder.toLocaleDateString(),
-          lastOrder: timeAgo(guest.lastOrder),
-          status,
-          rawJoined: guest.firstOrder,
-          rawLastOrder: guest.lastOrder,
-          isGuest: true
-        };
-      });
-
-      setCustomers([...registeredCustomers, ...guestCustomers]);
-    } catch (error) {
-      console.error('Error in fallback fetch:', error);
-    } finally {
-      setLoading(false);
-    }
+  const exportCustomers = (rows: any[], filename: string) => {
+    downloadCsv(
+      filename,
+      ['Name', 'Email', 'Phone', 'Paid orders', 'Spent (GHS)', 'Spent (USD)', 'Last paid order', 'Joined', 'Status', 'Account'],
+      rows.map(c => [
+        c.name,
+        c.email,
+        c.phone === 'N/A' ? '' : c.phone,
+        c.orders,
+        c.spent.GHS.toFixed(2),
+        c.spent.USD.toFixed(2),
+        c.rawLastOrder ? c.rawLastOrder.toLocaleDateString() : '',
+        c.joined,
+        c.status,
+        c.isGuest ? 'Guest' : 'Registered'
+      ])
+    );
   };
 
   const getInitials = (name: string) => {
@@ -216,10 +137,10 @@ export default function AdminCustomersPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedCustomers.length === customers.length) {
+    if (selectedCustomers.length === filteredCustomers.length) {
       setSelectedCustomers([]);
     } else {
-      setSelectedCustomers(customers.map(c => c.id));
+      setSelectedCustomers(filteredCustomers.map(c => c.id));
     }
   };
 
@@ -254,7 +175,8 @@ export default function AdminCustomersPage() {
     result = [...result].sort((a, b) => {
       if (sortOption === 'Sort by Name') return a.name.localeCompare(b.name);
       if (sortOption === 'Sort by Orders') return b.orders - a.orders;
-      if (sortOption === 'Sort by Spent') return b.totalSpent - a.totalSpent;
+      // Cedis and dollars are not comparable: rank by cedis first, then by dollars.
+      if (sortOption === 'Sort by Spent') return (b.spent.GHS - a.spent.GHS) || (b.spent.USD - a.spent.USD);
       if (sortOption === 'Sort by Join Date') return b.rawJoined.getTime() - a.rawJoined.getTime();
       return 0;
     });
@@ -271,8 +193,22 @@ export default function AdminCustomersPage() {
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     }).length,
     vip: customers.filter(c => c.status === 'VIP').length,
-    avgLTV: customers.length > 0 ? (customers.reduce((sum, c) => sum + c.totalSpent, 0) / customers.length) : 0
+    // Average paid spend per buyer, worked out separately for each currency.
+    avgSpend: (['GHS', 'USD'] as const)
+      .map(currency => {
+        const buyers = customers.filter(c => c.spent[currency] > 0);
+        if (buyers.length === 0) return null;
+        return formatMoney(buyers.reduce((sum, c) => sum + c.spent[currency], 0) / buyers.length, currency);
+      })
+      .filter(Boolean)
+      .join(' · ')
   }), [customers]);
+
+  // Selected customers with a real email address, for the bulk "Send Email" link.
+  const selectedEmails = customers
+    .filter(c => selectedCustomers.includes(c.id) && c.email)
+    .map(c => c.email as string);
+  const bulkMailto = `mailto:?bcc=${selectedEmails.map(e => encodeURIComponent(e)).join(',')}`;
 
   return (
     <div className="space-y-6">
@@ -281,11 +217,22 @@ export default function AdminCustomersPage() {
           <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
           <p className="text-gray-600 mt-1">Manage your customer base and relationships</p>
         </div>
-        <button className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer">
+        <button
+          onClick={() => exportCustomers(filteredCustomers, 'customers.csv')}
+          disabled={loading || filteredCustomers.length === 0}
+          className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           <i className="ri-download-line mr-2"></i>
           Export Customers
         </button>
       </div>
+
+      {loadError && (
+        <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm flex items-center justify-between">
+          <span>Could not load customers: {loadError}</span>
+          <button onClick={fetchCustomers} className="font-semibold underline cursor-pointer">Try again</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border-2 border-gray-200 p-4">
@@ -299,10 +246,13 @@ export default function AdminCustomersPage() {
         <div className="bg-white rounded-xl border-2 border-gray-200 p-4">
           <p className="text-sm text-gray-600 mb-1">VIP Customers</p>
           <p className="text-2xl font-bold text-purple-700">{stats.vip}</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Spent over {formatMoney(VIP_THRESHOLD.GHS, 'GHS')} or {formatMoney(VIP_THRESHOLD.USD, 'USD')}
+          </p>
         </div>
         <div className="bg-white rounded-xl border-2 border-gray-200 p-4">
-          <p className="text-sm text-gray-600 mb-1">Avg Lifetime Value</p>
-          <p className="text-2xl font-bold text-gray-900">GH₵ {stats.avgLTV.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+          <p className="text-sm text-gray-600 mb-1">Avg Spent per Buyer</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.avgSpend || 'No paid orders yet'}</p>
         </div>
       </div>
 
@@ -354,15 +304,23 @@ export default function AdminCustomersPage() {
               {selectedCustomers.length} customer{selectedCustomers.length > 1 ? 's' : ''} selected
             </p>
             <div className="flex items-center space-x-2">
-              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer">
-                <i className="ri-mail-line mr-2"></i>
-                Send Email
-              </button>
-              <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer">
-                <i className="ri-vip-crown-line mr-2"></i>
-                Mark as VIP
-              </button>
-              <button className="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer">
+              {selectedEmails.length === 0 ? (
+                <span className="text-sm text-blue-800">No email address on the selected customers</span>
+              ) : bulkMailto.length > 1800 ? (
+                <span className="text-sm text-blue-800">Too many to email at once. Export the list instead.</span>
+              ) : (
+                <a
+                  href={bulkMailto}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer"
+                >
+                  <i className="ri-mail-line mr-2"></i>
+                  Send Email ({selectedEmails.length})
+                </a>
+              )}
+              <button
+                onClick={() => exportCustomers(customers.filter(c => selectedCustomers.includes(c.id)), 'selected-customers.csv')}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer"
+              >
                 <i className="ri-download-line mr-2"></i>
                 Export
               </button>
@@ -384,9 +342,9 @@ export default function AdminCustomersPage() {
                 </th>
                 <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Customer</th>
                 <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Contact</th>
-                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Orders</th>
+                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Paid Orders</th>
                 <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Total Spent</th>
-                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Last Order</th>
+                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Last Paid Order</th>
                 <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Status</th>
                 <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Actions</th>
               </tr>
@@ -421,11 +379,11 @@ export default function AdminCustomersPage() {
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <p className="text-gray-700 text-sm">{customer.email}</p>
+                      <p className="text-gray-700 text-sm">{customer.email || 'No email'}</p>
                       <p className="text-gray-600 text-sm">{customer.phone}</p>
                     </td>
                     <td className="py-4 px-4 font-semibold text-gray-900">{customer.orders}</td>
-                    <td className="py-4 px-4 font-semibold text-blue-700 whitespace-nowrap">GH₵ {customer.totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="py-4 px-4 font-semibold text-blue-700 whitespace-nowrap">{formatMoneyByCurrency(customer.spent)}</td>
                     <td className="py-4 px-4 text-gray-700 text-sm whitespace-nowrap">{customer.lastOrder}</td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
@@ -443,16 +401,22 @@ export default function AdminCustomersPage() {
                       <div className="flex items-center space-x-2">
                         <Link
                           href={`/admin/customers/${customer.id}`}
+                          title="View customer"
+                          aria-label={`View ${customer.name}`}
                           className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                           <i className="ri-eye-line text-lg"></i>
                         </Link>
-                        <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer">
-                          <i className="ri-mail-line text-lg"></i>
-                        </button>
-                        <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
-                          <i className="ri-delete-bin-line text-lg"></i>
-                        </button>
+                        {customer.email && (
+                          <a
+                            href={`mailto:${customer.email}`}
+                            title={`Email ${customer.email}`}
+                            aria-label={`Email ${customer.name}`}
+                            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <i className="ri-mail-line text-lg"></i>
+                          </a>
+                        )}
                       </div>
                     </td>
                   </tr>

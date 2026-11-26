@@ -1,10 +1,48 @@
 'use client';
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import { money } from '@/lib/format-money';
+import { formatMoney } from '@/lib/format-money';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+
+/** A price greater than 0, or null when none is set. */
+function realPrice(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * The prices shoppers are charged, per currency. A product with variants is read
+ * from its variants (cheapest one, as the shop lists it); a variant without its
+ * own price uses the product's. Cedis and dollars are separate prices and are
+ * never worked out from each other.
+ */
+function shopPrices(product: any) {
+  const variants: any[] = Array.isArray(product.product_variants) ? product.product_variants : [];
+  if (variants.length === 0) {
+    return { ghs: realPrice(product.price_ghs), usd: realPrice(product.price), from: { ghs: false, usd: false } };
+  }
+  const ghsPrices = variants.map((v) => realPrice(v.price_ghs) ?? realPrice(product.price_ghs)).filter((p): p is number => p !== null);
+  const usdPrices = variants.map((v) => realPrice(v.price) ?? realPrice(product.price)).filter((p): p is number => p !== null);
+  return {
+    ghs: ghsPrices.length ? Math.min(...ghsPrices) : null,
+    usd: usdPrices.length ? Math.min(...usdPrices) : null,
+    // "From" when the variants do not all cost the same
+    from: {
+      ghs: ghsPrices.length > 0 && Math.min(...ghsPrices) !== Math.max(...ghsPrices),
+      usd: usdPrices.length > 0 && Math.min(...usdPrices) !== Math.max(...usdPrices)
+    }
+  };
+}
+
+/** 'out' at 0, 'low' at or under the product's low-stock threshold, else 'in'. */
+function stockLevel(product: any): 'out' | 'low' | 'in' {
+  const stock = Number(product.quantity) || 0;
+  if (stock <= 0) return 'out';
+  return stock <= (Number(product.metadata?.low_stock_threshold) || 5) ? 'low' : 'in';
+}
 
 export default function ProductsPage() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -12,18 +50,22 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStock, setFilterStock] = useState('');
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
+  const [deleting, setDeleting] = useState(false);
 
-  // Statistics
-  const [stats, setStats] = useState({
-    total: 0,
-    lowStock: 0,
-    outOfStock: 0,
-    active: 0
-  });
+  // Statistics, always worked out from the products on the page
+  const stats = {
+    total: products.length,
+    lowStock: products.filter((p) => stockLevel(p) === 'low').length,
+    outOfStock: products.filter((p) => stockLevel(p) === 'out').length,
+    active: products.filter((p) => p.status === 'active').length
+  };
 
   const statusColors: any = {
     'active': 'bg-blue-100 text-blue-700',
@@ -37,8 +79,20 @@ export default function ProductsPage() {
     fetchCategories();
   }, [sortBy]);
 
+  // The dashboard links here with ?filter=low-stock
+  useEffect(() => {
+    const filter = new URLSearchParams(window.location.search).get('filter');
+    if (filter === 'low-stock') {
+      setFilterStock('low');
+      setShowFilters(true);
+    } else if (filter === 'out-of-stock') {
+      setFilterStock('out');
+      setShowFilters(true);
+    }
+  }, []);
+
   const fetchCategories = async () => {
-    const { data } = await supabase.from('categories').select('name');
+    const { data } = await supabase.from('categories').select('name').order('name');
     if (data) setCategories(data);
   };
 
@@ -60,7 +114,7 @@ export default function ProductsPage() {
           metadata,
           created_at,
           categories(name),
-          product_variants(id),
+          product_variants(id, price, price_ghs),
           product_images(url, position)
         `);
 
@@ -88,7 +142,7 @@ export default function ProductsPage() {
           category: categoryName(p),
           image: p.product_images?.find((img: any) => img.position === 0)?.url
             || p.product_images?.[0]?.url
-            || 'https://via.placeholder.com/300?text=No+Image',
+            || '/placeholder-product.svg',
           variantsCount: Array.isArray(p.product_variants) ? p.product_variants.length : 0,
           stock: p.quantity,
           sales: 0, // Placeholder for now
@@ -96,14 +150,6 @@ export default function ProductsPage() {
         }));
 
         setProducts(transformedProducts);
-
-        // Calculate stats locally for now (better to do count queries in production)
-        setStats({
-          total: transformedProducts.length,
-          lowStock: transformedProducts.filter(p => p.quantity < (p.metadata?.low_stock_threshold || 5) && p.quantity > 0).length,
-          outOfStock: transformedProducts.filter(p => p.quantity === 0).length,
-          active: transformedProducts.filter(p => p.status === 'active').length
-        });
       }
     } catch (error: any) {
       console.error('Error fetching products:', error);
@@ -113,12 +159,35 @@ export default function ProductsPage() {
     }
   };
 
+  // The rows on screen: search plus the Filters panel (category, status, stock level)
+  const filteredProducts = products.filter(product => {
+    const term = searchQuery.trim().toLowerCase();
+    const matchesSearch = !term ||
+      (product.name || '').toLowerCase().includes(term) ||
+      (product.sku && product.sku.toLowerCase().includes(term)) ||
+      (product.category && product.category.toLowerCase().includes(term));
+    const matchesCategory = !filterCategory || product.category === filterCategory;
+    const matchesStatus = !filterStatus || product.status === filterStatus;
+    const matchesStock = !filterStock || stockLevel(product) === filterStock;
+    return matchesSearch && matchesCategory && matchesStatus && matchesStock;
+  });
+
+  const activeFilterCount = [filterCategory, filterStatus, filterStock].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setFilterCategory('');
+    setFilterStatus('');
+    setFilterStock('');
+  };
+
+  // Selection only ever counts rows that are on screen, so a bulk action can
+  // never touch a product hidden by the search or the filters.
+  const visibleIds = filteredProducts.map((p) => p.id);
+  const selectedVisible = selectedProducts.filter((id) => visibleIds.includes(id));
+  const allVisibleSelected = visibleIds.length > 0 && selectedVisible.length === visibleIds.length;
+
   const handleSelectAll = () => {
-    if (selectedProducts.length === products.length) {
-      setSelectedProducts([]);
-    } else {
-      setSelectedProducts(products.map(p => p.id));
-    }
+    setSelectedProducts(allVisibleSelected ? [] : visibleIds);
   };
 
   const handleSelectProduct = (productId: string) => {
@@ -129,68 +198,94 @@ export default function ProductsPage() {
     }
   };
 
-  const handleDeleteProduct = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
-    try {
-      // Unlink from order_items so we can delete (order history keeps product_name/sku/price)
-      await supabase.from('order_items').update({ product_id: null, variant_id: null }).eq('product_id', productId);
-      // Delete in dependency order: review_images → reviews → cart_items → wishlist_items → product_images → product_variants → products
-      const { data: reviewIds } = await supabase.from('reviews').select('id').eq('product_id', productId);
-      if (reviewIds?.length) {
-        const ids = reviewIds.map((r) => r.id);
-        await supabase.from('review_images').delete().in('review_id', ids);
-        await supabase.from('reviews').delete().eq('product_id', productId);
-      }
-      await supabase.from('cart_items').delete().eq('product_id', productId);
-      await supabase.from('wishlist_items').delete().eq('product_id', productId);
-      await supabase.from('product_images').delete().eq('product_id', productId);
-      await supabase.from('product_variants').delete().eq('product_id', productId);
-      const { error } = await supabase.from('products').delete().eq('id', productId);
-      if (error) throw error;
-      setProducts(products.filter((p) => p.id !== productId));
-      alert('Product deleted successfully');
-    } catch (err: any) {
-      alert('Error deleting product: ' + (err?.message || 'Please try again.'));
+  // Deletes one product and everything that hangs off it. Stops at the first
+  // step that fails and returns its message; returns null when the product is gone.
+  const deleteProductRows = async (productId: string): Promise<string | null> => {
+    // Unlink from order_items so we can delete (order history keeps product_name/sku/price)
+    const unlink = await supabase.from('order_items').update({ product_id: null, variant_id: null }).eq('product_id', productId);
+    if (unlink.error) return unlink.error.message;
+    // Delete in dependency order: review_images → reviews → cart_items → wishlist_items → product_images → product_variants → products
+    const reviews = await supabase.from('reviews').select('id').eq('product_id', productId);
+    if (reviews.error) return reviews.error.message;
+    if (reviews.data?.length) {
+      const ids = reviews.data.map((r: any) => r.id);
+      const reviewImages = await supabase.from('review_images').delete().in('review_id', ids);
+      if (reviewImages.error) return reviewImages.error.message;
+      const reviewRows = await supabase.from('reviews').delete().eq('product_id', productId);
+      if (reviewRows.error) return reviewRows.error.message;
     }
+    for (const table of ['cart_items', 'wishlist_items', 'product_images', 'product_variants']) {
+      const { error } = await supabase.from(table).delete().eq('product_id', productId);
+      if (error) return error.message;
+    }
+    const { error } = await supabase.from('products').delete().eq('id', productId);
+    return error ? error.message : null;
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (deleting) return;
+    const name = products.find((p) => p.id === productId)?.name || 'this product';
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    const problem = await deleteProductRows(productId);
+    setDeleting(false);
+    if (problem) {
+      alert(`"${name}" was not deleted: ${problem}`);
+      return;
+    }
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    setSelectedProducts((prev) => prev.filter((id) => id !== productId));
   };
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Are you sure you want to delete ${selectedProducts.length} product(s)?`)) return;
+    if (deleting) return;
+    const ids = selectedVisible;
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} product${ids.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    setDeleting(true);
+    const deleted: string[] = [];
     const failed: string[] = [];
-    for (const productId of selectedProducts) {
-      try {
-        await supabase.from('order_items').update({ product_id: null, variant_id: null }).eq('product_id', productId);
-        const { data: reviewIds } = await supabase.from('reviews').select('id').eq('product_id', productId);
-        if (reviewIds?.length) {
-          const ids = reviewIds.map((r) => r.id);
-          await supabase.from('review_images').delete().in('review_id', ids);
-          await supabase.from('reviews').delete().eq('product_id', productId);
-        }
-        await supabase.from('cart_items').delete().eq('product_id', productId);
-        await supabase.from('wishlist_items').delete().eq('product_id', productId);
-        await supabase.from('product_images').delete().eq('product_id', productId);
-        await supabase.from('product_variants').delete().eq('product_id', productId);
-        const { error } = await supabase.from('products').delete().eq('id', productId);
-        if (error) throw error;
-      } catch {
+    for (const productId of ids) {
+      const problem = await deleteProductRows(productId);
+      if (problem) {
         failed.push(products.find((p) => p.id === productId)?.name || productId.slice(0, 8));
+      } else {
+        deleted.push(productId);
       }
     }
-    setProducts(products.filter((p) => !selectedProducts.includes(p.id)));
-    setSelectedProducts([]);
+    setDeleting(false);
+    // Only the rows that really were deleted leave the list; the rest stay selected
+    setProducts((prev) => prev.filter((p) => !deleted.includes(p.id)));
+    setSelectedProducts((prev) => prev.filter((id) => !deleted.includes(id)));
     if (failed.length) {
-      alert(`Deleted ${selectedProducts.length - failed.length}. Failed: ${failed.join(', ')}`);
+      alert(`Deleted ${deleted.length}. Not deleted: ${failed.join(', ')}. They are still in the list; try again.`);
     } else {
-      alert('Products deleted successfully');
+      alert(`Deleted ${deleted.length} product${deleted.length !== 1 ? 's' : ''}.`);
     }
   };
 
-  const filteredProducts = products.filter(product => {
-    const term = searchQuery.toLowerCase();
-    return product.name.toLowerCase().includes(term) ||
-      (product.sku && product.sku.toLowerCase().includes(term)) ||
-      (product.category && product.category.toLowerCase().includes(term));
-  });
+  // Cedi price with the dollar price under it; a missing price is called out in amber
+  const renderPrices = (product: any) => {
+    const prices = shopPrices(product);
+    return (
+      <div className="whitespace-nowrap">
+        {prices.ghs !== null ? (
+          <p className="font-semibold text-gray-900">
+            {prices.from.ghs ? 'From ' : ''}{formatMoney(prices.ghs, 'GHS')}
+          </p>
+        ) : (
+          <p className="text-sm font-semibold text-amber-600">No cedi price</p>
+        )}
+        {prices.usd !== null ? (
+          <p className="text-xs text-gray-500">
+            {prices.from.usd ? 'From ' : ''}{formatMoney(prices.usd, 'USD')}
+          </p>
+        ) : (
+          <p className="text-xs font-semibold text-amber-600">No dollar price</p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -250,6 +345,9 @@ export default function ProductsPage() {
               >
                 <i className="ri-filter-line mr-2"></i>
                 Filters
+                {activeFilterCount > 0 && (
+                  <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full">{activeFilterCount}</span>
+                )}
               </button>
               <select
                 value={sortBy}
@@ -283,31 +381,62 @@ export default function ProductsPage() {
 
           {showFilters && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg grid md:grid-cols-4 gap-4">
-              <select className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm cursor-pointer">
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                aria-label="Filter by category"
+                className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm cursor-pointer"
+              >
                 <option value="">All Categories</option>
                 {categories.map((cat: any) => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
+                <option value="Uncategorized">Uncategorized</option>
               </select>
-              <select className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm cursor-pointer">
-                <option>All Status</option>
-                <option>Active</option>
-                <option>Draft</option>
-                <option>Archived</option>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                aria-label="Filter by status"
+                className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm cursor-pointer"
+              >
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="draft">Draft</option>
+                <option value="archived">Archived</option>
               </select>
+              <select
+                value={filterStock}
+                onChange={(e) => setFilterStock(e.target.value)}
+                aria-label="Filter by stock level"
+                className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm cursor-pointer"
+              >
+                <option value="">All Stock Levels</option>
+                <option value="in">In Stock</option>
+                <option value="low">Low Stock</option>
+                <option value="out">Out of Stock</option>
+              </select>
+              <button
+                type="button"
+                onClick={clearFilters}
+                disabled={activeFilterCount === 0}
+                className="px-3 py-2 border-2 border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:border-gray-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Clear filters
+              </button>
             </div>
           )}
         </div>
 
-        {selectedProducts.length > 0 && (
+        {selectedVisible.length > 0 && (
           <div className="p-4 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
             <p className="text-blue-800 font-semibold">
-              {selectedProducts.length} product{selectedProducts.length > 1 ? 's' : ''} selected
+              {selectedVisible.length} product{selectedVisible.length > 1 ? 's' : ''} selected
             </p>
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleBulkDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer"
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Delete
+                {deleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
@@ -345,8 +474,9 @@ export default function ProductsPage() {
                   <th className="py-4 px-6">
                     <input
                       type="checkbox"
-                      checked={selectedProducts.length === products.length && products.length > 0}
+                      checked={allVisibleSelected}
                       onChange={handleSelectAll}
+                      aria-label="Select all products shown"
                       className="w-4 h-4 text-blue-700 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
                     />
                   </th>
@@ -376,7 +506,7 @@ export default function ProductsPage() {
                           <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">{product.name}</p>
+                          <p className="font-semibold text-gray-900">{product.name || <span className="text-amber-600">No name</span>}</p>
                           <div className="flex items-center mt-1">
                             <span className="text-xs text-gray-400">ID: {product.id.substring(0, 8)}...</span>
                           </div>
@@ -385,13 +515,13 @@ export default function ProductsPage() {
                     </td>
                     <td className="py-4 px-4 text-gray-700 text-sm font-mono">{product.sku || '-'}</td>
                     <td className="py-4 px-4 text-gray-700 text-sm">{product.category}</td>
-                    <td className="py-4 px-4 font-semibold text-gray-900 whitespace-nowrap">${money(product.price)}</td>
+                    <td className="py-4 px-4">{renderPrices(product)}</td>
                     <td className="py-4 px-4 text-gray-700">
                       {product.stock}
-                      {product.stock <= (product.metadata?.low_stock_threshold || 5) && product.stock > 0 && (
+                      {stockLevel(product) === 'low' && (
                         <span className="ml-2 w-2 h-2 rounded-full bg-amber-500 inline-block" title="Low Stock"></span>
                       )}
-                      {product.stock === 0 && (
+                      {stockLevel(product) === 'out' && (
                         <span className="ml-2 w-2 h-2 rounded-full bg-red-500 inline-block" title="Out of Stock"></span>
                       )}
                     </td>
@@ -442,7 +572,7 @@ export default function ProductsPage() {
                 <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{product.name}</h3>
                 <p className="text-sm text-gray-600 mb-2">{product.category}</p>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-lg font-bold text-gray-900">${money(product.price)}</p>
+                  {renderPrices(product)}
                 </div>
                 <div className="flex items-center justify-between text-sm text-gray-600 mb-3 pb-3 border-b border-gray-200">
                   <span>Stock: {product.stock}</span>

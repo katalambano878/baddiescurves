@@ -1,22 +1,28 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
+import { asNumber, formatMoneyByCurrency, normalizeCurrency } from '@/lib/format-money';
+
+// Sales in cedis and dollars are kept apart: an item's price is in its order's currency.
+type CurrencyTotals = { GHS: number; USD: number };
 
 interface SalesStat {
     productId: string;
     productName: string;
     ordersCount: number;
     itemsSold: number;
-    totalRevenue: number;
+    totalRevenue: CurrencyTotals;
     _orderIds: Set<string>;
-    variants: Map<string, { quantity: number; revenue: number }>;
+    variants: Map<string, { quantity: number; revenue: CurrencyTotals }>;
 }
 
 interface VariantDisplay {
     name: string;
     quantity: number;
-    revenue: number;
+    revenue: CurrencyTotals;
 }
+
+const hasRevenue = (totals: CurrencyTotals) => totals.GHS > 0 || totals.USD > 0;
 
 export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const [period, setPeriod] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
@@ -65,7 +71,8 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
             id,
             created_at,
             status,
-            payment_status
+            payment_status,
+            currency
           )
         `);
 
@@ -92,24 +99,27 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
                             productName: item.product_name,
                             ordersCount: 0,
                             itemsSold: 0,
-                            totalRevenue: 0,
+                            totalRevenue: { GHS: 0, USD: 0 },
                             _orderIds: new Set(),
                             variants: new Map()
                         });
                     }
 
                     const entry = map.get(pid)!;
+                    // The embedded order is one object (to-one relation); tolerate an array too.
+                    const parentOrder = Array.isArray(item.orders) ? item.orders[0] : item.orders;
+                    const currency = normalizeCurrency(parentOrder?.currency);
                     entry.itemsSold += (item.quantity || 0);
-                    entry.totalRevenue += (item.total_price || 0);
+                    entry.totalRevenue[currency] += asNumber(item.total_price);
 
                     // Track variants
                     const variantName = item.variant_name || 'Default';
-                    const existing = entry.variants.get(variantName) || { quantity: 0, revenue: 0 };
+                    const existing = entry.variants.get(variantName) || { quantity: 0, revenue: { GHS: 0, USD: 0 } };
                     existing.quantity += (item.quantity || 0);
-                    existing.revenue += (item.total_price || 0);
+                    existing.revenue[currency] += asNumber(item.total_price);
                     entry.variants.set(variantName, existing);
 
-                    const orderId = item.orders?.id;
+                    const orderId = parentOrder?.id;
                     if (orderId && !entry._orderIds.has(orderId)) {
                         entry.ordersCount++;
                         entry._orderIds.add(orderId);
@@ -179,7 +189,7 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
                                 <th className="p-4 pl-6">Product Name</th>
                                 <th className="p-4 text-center">Orders Count</th>
                                 <th className="p-4 text-center">Items Sold (Qty)</th>
-                                <th className="p-4 text-right pr-6">Revenue (Est.)</th>
+                                <th className="p-4 text-right pr-6">Revenue</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 bg-white">
@@ -232,7 +242,7 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
                                             <span className="font-bold text-blue-700 text-base">{s.itemsSold}</span>
                                         </td>
                                         <td className="p-4 text-right pr-6 text-gray-600 font-mono">
-                                            {s.totalRevenue > 0 ? s.totalRevenue.toLocaleString() : '-'}
+                                            {hasRevenue(s.totalRevenue) ? formatMoneyByCurrency(s.totalRevenue) : '-'}
                                         </td>
                                     </tr>
                                     {expandedProduct === s.productId && hasVariants && (
@@ -247,7 +257,7 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
                                                 <td className="p-3 text-center text-xs text-gray-400">—</td>
                                                 <td className="p-3 text-center text-xs font-semibold text-gray-700">{v.quantity}</td>
                                                 <td className="p-3 text-right pr-6 text-xs text-gray-500 font-mono">
-                                                    {v.revenue > 0 ? v.revenue.toLocaleString() : '-'}
+                                                    {hasRevenue(v.revenue) ? formatMoneyByCurrency(v.revenue) : '-'}
                                                 </td>
                                             </tr>
                                         ))

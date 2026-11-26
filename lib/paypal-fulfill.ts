@@ -69,6 +69,26 @@ export async function fulfillPayPalOrder(opts: {
     };
   }
 
+  // The PayPal payment must be the one created for this order, with an amount we can read.
+  const linkedPayPalId = order.metadata?.paypal_order_id;
+  const paidForOrder = info.customId ? String(info.customId) === String(order.order_number) : true;
+  const sameLinkedOrder = !linkedPayPalId || !opts.paypalOrder?.id || opts.paypalOrder.id === linkedPayPalId;
+  if (!paidForOrder || !sameLinkedOrder || info.amount == null || !info.currency) {
+    console.error('[PayPal] Payment does not belong to order', opts.orderNumber, {
+      customId: info.customId,
+      paypalId: opts.paypalOrder?.id,
+      linkedPayPalId,
+      amount: info.amount,
+    });
+    await completePaymentEvent({
+      gateway: 'paypal',
+      eventKey,
+      status: 'failed',
+      error: 'Payment does not belong to this order',
+    });
+    return { success: false, message: 'This PayPal payment does not match the order' };
+  }
+
   if (info.amount != null && Math.abs(info.amount - Number(order.total)) > 0.01) {
     console.error(
       '[PayPal] Amount mismatch — expected',

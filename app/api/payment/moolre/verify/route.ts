@@ -66,7 +66,8 @@ async function fetchMoolrePaymentStatus(externalRef: string): Promise<MoolreStat
             idtype: '1',
             id: externalRef,
             accountnumber: process.env.MOOLRE_ACCOUNT_NUMBER
-        })
+        }),
+        signal: AbortSignal.timeout(20_000)
     });
 
     return response.json();
@@ -152,8 +153,13 @@ export async function POST(req: Request) {
                 const checkResult = await fetchMoolrePaymentStatus(externalRef);
                 console.log('[Verify] Moolre status response for', externalRef, ':', JSON.stringify(checkResult));
 
+                // The payment Moolre reports must be this order's own payment.
+                const reportedRef = String(checkResult?.data?.externalref || '');
+                const belongsToOrder = !reportedRef || reportedRef === orderNumber || reportedRef.startsWith(`${orderNumber}-R`);
+
                 if (
                     checkResult &&
+                    belongsToOrder &&
                     isMoolreStatusSuccess(checkResult) &&
                     amountMatchesOrder(checkResult, Number(order.total))
                 ) {

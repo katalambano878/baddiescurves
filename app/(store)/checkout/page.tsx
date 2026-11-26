@@ -5,35 +5,33 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import CheckoutSteps from '@/components/CheckoutSteps';
 import OrderSummary from '@/components/OrderSummary';
+import CouponBox from '@/components/CouponBox';
 import { useCart } from '@/context/CartContext';
+import { useCartQuote } from '@/hooks/useCartQuote';
 import { supabase } from '@/lib/supabase';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
-import { useIsGhana } from '@/lib/currency';
+import { chooseMarket, useIsGhana } from '@/lib/currency';
 import {
   GHANA_REGIONS,
   INTERNATIONAL_COUNTRIES,
   DEFAULT_SHIPPING_RATES,
   mergeShippingRates,
   quoteShipping,
+  countryLabel,
   type ShippingRatesConfig,
 } from '@/lib/shipping';
-import {
-  emptyShippingAddress,
-  normalizeShippingAddress,
-  validateShippingAddress,
-} from '@/lib/shipping-address';
+import { emptyShippingAddress, validateShippingAddress } from '@/lib/shipping-address';
 
 export default function CheckoutPage() {
   usePageTitle('Checkout');
   const router = useRouter();
-  const { cart, subtotal: cartSubtotal, clearCart } = useCart();
+  const { cart, subtotal: cartSubtotal, cartLines, couponCode } = useCart();
   const isGhana = useIsGhana();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [checkoutType, setCheckoutType] = useState<'guest' | 'account'>('guest');
-  const [saveAddress, setSaveAddress] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const { getToken, verifying } = useRecaptcha();
 
@@ -43,6 +41,20 @@ export default function CheckoutPage() {
   const [deliveryMethod, setDeliveryMethod] = useState('pickup');
   const paymentMethod: 'moolre' | 'paypal' = isGhana ? 'moolre' : 'paypal';
   const orderCurrency = isGhana ? 'GHS' : 'USD';
+
+  // The server's price for this cart with the chosen delivery and code. This
+  // is what the order will charge; the local numbers are only a first paint.
+  const {
+    quote: serverQuote,
+    loading: pricing,
+    error: pricingError,
+    refresh: refreshQuote,
+  } = useCartQuote({
+    deliveryMethod,
+    countryCode: shippingData.countryCode || undefined,
+    email: currentStep === 2 ? shippingData.email : undefined,
+    phone: currentStep === 2 ? shippingData.phone : undefined,
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -50,7 +62,6 @@ export default function CheckoutPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
-        setCheckoutType('account');
         setShippingData((prev) => ({ ...prev, email: session.user.email || '' }));
       }
     }
@@ -99,10 +110,12 @@ export default function CheckoutPage() {
     [isGhana, deliveryMethod, shippingData.countryCode, rates]
   );
 
-  const subtotal = cartSubtotal;
-  const shippingCost = quote.amount;
-  const tax = 0;
-  const total = subtotal + shippingCost + tax;
+  const subtotal = serverQuote ? serverQuote.subtotal : cartSubtotal;
+  const shippingCost = serverQuote ? serverQuote.shipping.amount : quote.amount;
+  const discount = serverQuote?.discount ?? 0;
+  const total = serverQuote ? serverQuote.total : subtotal + shippingCost;
+  const cartProblems = serverQuote?.problems ?? [];
+  const couponRejected = !!(couponCode && serverQuote?.coupon && !serverQuote.coupon.ok);
 
   const updateField = (field: keyof typeof shippingData, value: string) => {
     setShippingData((prev) => ({ ...prev, [field]: value }));
@@ -129,173 +142,74 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0) {
-      alert('Your cart is empty');
+      setOrderError('Your cart is empty.');
       return;
     }
 
+    setOrderError(null);
     setIsLoading(true);
 
     const isHuman = await getToken('checkout');
     if (!isHuman) {
-      alert('Security verification failed. Please try again.');
+      setOrderError('We could not confirm you are not a robot. Please try again.');
       setIsLoading(false);
       return;
     }
 
     try {
-      const address = normalizeShippingAddress(shippingData, isGhana);
-      const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      const trackingId = Array.from({ length: 6 }, () =>
-        'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]
-      ).join('');
-      const trackingNumber = `SLI-${trackingId}`;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert([
-          {
-            order_number: orderNumber,
-            user_id: user?.id || null,
-            email: address.email,
-            phone: address.phone,
-            status: 'pending',
-            payment_status: 'pending',
-            currency: orderCurrency,
-            subtotal,
-            tax_total: tax,
-            shipping_total: shippingCost,
-            discount_total: 0,
-            total,
-            shipping_method: deliveryMethod,
-            payment_method: paymentMethod,
-            shipping_address: address,
-            billing_address: address,
-            metadata: {
-              guest_checkout: !user,
-              first_name: address.firstName,
-              last_name: address.lastName,
-              tracking_number: trackingNumber,
-              payment_method: paymentMethod,
-              shipping_quote_label: quote.label,
-              detected_market: isGhana ? 'GH' : 'INTL',
-              ship_to_country: address.countryCode,
-            },
-          },
-        ])
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      const isValidUUID = (str: string) =>
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-
-      const orderItems = [];
-      const productIds = cart.map((item) => item.id).filter((id) => isValidUUID(id));
-      const { data: productsData } =
-        productIds.length > 0
-          ? await supabase.from('products').select('id, metadata').in('id', productIds)
-          : { data: [] };
-      const productMetaMap = new Map((productsData || []).map((p: any) => [p.id, p.metadata]));
-
-      for (const item of cart) {
-        let productId = item.id;
-
-        if (!isValidUUID(productId)) {
-          const { data: product } = await supabase
-            .from('products')
-            .select('id, metadata')
-            .or(`slug.eq.${productId},id.eq.${productId}`)
-            .single();
-
-          if (product) {
-            productId = product.id;
-            productMetaMap.set(product.id, product.metadata);
-          } else {
-            throw new Error(
-              `Product not found: ${item.name}. Please remove it from your cart and try again.`
-            );
-          }
-        }
-
-        const prodMeta = productMetaMap.get(productId);
-
-        orderItems.push({
-          order_id: order.id,
-          product_id: productId,
-          product_name: item.name,
-          variant_name: item.variant,
-          quantity: item.quantity,
-          unit_price: item.price,
-          total_price: item.price * item.quantity,
-          metadata: {
-            image: item.image,
-            slug: item.slug,
-            preorder_shipping: prodMeta?.preorder_shipping || null,
-          },
-        });
-      }
-
-      const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
-      if (itemsError) throw itemsError;
-
-      const fullName = `${address.firstName} ${address.lastName}`.trim();
-      await supabase.rpc('upsert_customer_from_order', {
-        p_email: address.email,
-        p_phone: address.phone,
-        p_full_name: fullName,
-        p_first_name: address.firstName,
-        p_last_name: address.lastName,
-        p_user_id: user?.id || null,
-        p_address: address,
+      // The server works out every amount: prices, delivery, discount, total.
+      const orderRes = await fetch('/api/storefront/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({
+          items: cartLines,
+          currency: orderCurrency,
+          deliveryMethod,
+          address: shippingData,
+          couponCode: couponCode || undefined,
+        }),
       });
+      const orderResult = await orderRes.json().catch(() => ({}));
 
-      if (paymentMethod === 'moolre' || paymentMethod === 'paypal') {
-        try {
-          const endpoint =
-            paymentMethod === 'paypal' ? '/api/payment/paypal' : '/api/payment/moolre';
-
-          const paymentRes = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: orderNumber,
-              customerEmail: address.email,
-            }),
-          });
-
-          const paymentResult = await paymentRes.json();
-
-          if (!paymentResult.success) {
-            throw new Error(paymentResult.message || 'Payment initialization failed');
-          }
-
-          // Keep cart until payment succeeds (cleared on order-success when paid)
-          window.location.href = paymentResult.url;
-          return;
-        } catch (paymentErr: any) {
-          console.error('Payment Error:', paymentErr);
-          alert('Failed to initialize payment: ' + paymentErr.message);
-          setIsLoading(false);
-          return;
+      if (!orderRes.ok || !orderResult?.success) {
+        if (orderResult?.fieldErrors) {
+          setErrors(orderResult.fieldErrors);
+          setCurrentStep(1);
         }
+        refreshQuote();
+        setOrderError(orderResult?.message || 'We could not place your order. Nothing was charged. Please try again.');
+        setIsLoading(false);
+        return;
       }
 
-      fetch('/api/notifications', {
+      const orderNumber: string = orderResult.orderNumber;
+      const endpoint = paymentMethod === 'paypal' ? '/api/payment/paypal' : '/api/payment/moolre';
+      const paymentRes = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'order_created',
-          orderId: order.id,
-        }),
-      }).catch(() => {});
+        body: JSON.stringify({ orderId: orderNumber, customerEmail: shippingData.email }),
+      });
+      const paymentResult = await paymentRes.json().catch(() => ({}));
 
-      clearCart();
-      router.push(`/order-success?order=${orderNumber}`);
+      if (!paymentResult?.success || !paymentResult?.url) {
+        // The order exists but payment did not start: send them to the order's
+        // payment page, where they can try again without making a second order.
+        router.push(`/pay/${encodeURIComponent(orderNumber)}`);
+        return;
+      }
+
+      // Keep cart until payment succeeds (cleared on order-success when paid)
+      window.location.href = paymentResult.url;
     } catch (error: any) {
       console.error('Checkout error:', error);
-      alert(error?.message || 'Checkout failed. Please try again.');
-    } finally {
+      setOrderError('We could not reach the shop. Check your connection and try again. Nothing was charged.');
       setIsLoading(false);
     }
   };
@@ -339,68 +253,33 @@ export default function CheckoutPage() {
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Checkout</h1>
-        <p className="text-sm text-gray-500 mb-8">
+        <p className="text-sm text-gray-700 mb-8">
           {isGhana
-            ? 'Ghana checkout — prices in GH₵, pay with Mobile Money.'
-            : 'International checkout — prices in USD, pay with PayPal. Enter your full shipping address.'}
+            ? 'Ghana checkout: prices in GH₵, pay with Mobile Money.'
+            : 'International checkout: prices in US dollars, pay with PayPal.'}{' '}
+          <button
+            type="button"
+            onClick={() => chooseMarket(isGhana ? 'INTL' : 'GH')}
+            className="font-semibold text-blue-700 underline underline-offset-2 hover:no-underline"
+          >
+            {isGhana ? 'Not in Ghana? Pay in US dollars' : 'In Ghana? Pay in GH₵ with Mobile Money'}
+          </button>
         </p>
 
         {currentStep === 1 && (
-          <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Checkout As</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              <button
-                onClick={() => !user && setCheckoutType('guest')}
-                className={`p-6 rounded-xl border-2 transition-all text-left cursor-pointer ${
-                  checkoutType === 'guest'
-                    ? 'border-blue-700 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                } ${user ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!!user}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <i className="ri-user-line text-3xl text-blue-700"></i>
-                  <div
-                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                      checkoutType === 'guest' ? 'border-blue-700 bg-blue-700' : 'border-gray-300'
-                    }`}
-                  >
-                    {checkoutType === 'guest' && <i className="ri-check-line text-white text-sm"></i>}
-                  </div>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Guest Checkout</h3>
-                <p className="text-sm text-gray-600">Quick checkout without creating an account</p>
-              </button>
-
-              <button
-                onClick={() => setCheckoutType('account')}
-                className={`p-6 rounded-xl border-2 transition-all text-left cursor-pointer ${
-                  checkoutType === 'account'
-                    ? 'border-blue-700 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <i className="ri-account-circle-line text-3xl text-blue-700"></i>
-                  <div
-                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                      checkoutType === 'account' ? 'border-blue-700 bg-blue-700' : 'border-gray-300'
-                    }`}
-                  >
-                    {checkoutType === 'account' && (
-                      <i className="ri-check-line text-white text-sm"></i>
-                    )}
-                  </div>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  {user ? 'My Account' : 'Create Account'}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {user ? `Logged in as ${user.email}` : 'Save info and track orders'}
-                </p>
-              </button>
-            </div>
-          </div>
+          <p className="mb-8 text-sm text-gray-700">
+            {user ? (
+              <>Signed in as <span className="font-semibold text-gray-900">{user.email}</span>. This order will show in your account.</>
+            ) : (
+              <>
+                Checking out as a guest.{' '}
+                <Link href="/auth/login?redirect=/checkout" className="font-semibold text-blue-700 underline underline-offset-2 hover:no-underline">
+                  Sign in
+                </Link>{' '}
+                to see this order in your account.
+              </>
+            )}
+          </p>
         )}
 
         <CheckoutSteps currentStep={currentStep} />
@@ -629,19 +508,6 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  {checkoutType === 'account' && (
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={saveAddress}
-                        onChange={(e) => setSaveAddress(e.target.checked)}
-                        className="w-5 h-5 text-blue-700 rounded border-gray-300 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">
-                        Save this address for future orders
-                      </span>
-                    </label>
-                  )}
                 </div>
 
                 <button
@@ -779,7 +645,7 @@ export default function CheckoutPage() {
                     <div className="p-4 border-2 border-blue-700 bg-blue-50 rounded-lg">
                       <p className="font-semibold text-gray-900">International Shipping</p>
                       <p className="text-sm text-gray-600 mt-1">
-                        Ships to {shippingData.country || 'your selected country'}
+                        Ships to {shippingData.countryCode ? countryLabel(shippingData.countryCode) : 'your selected country'}
                         {shippingData.city ? ` · ${shippingData.city}` : ''}
                         {shippingData.state ? `, ${shippingData.state}` : ''}
                       </p>
@@ -803,6 +669,29 @@ export default function CheckoutPage() {
                     : 'International customers pay securely with PayPal in USD.'}
                 </p>
 
+                {(cartProblems.length > 0 || couponRejected || pricingError || orderError) && (
+                  <div role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 space-y-1">
+                    {orderError && <p className="font-semibold">{orderError}</p>}
+                    {cartProblems
+                      .filter((problem) => problem !== orderError)
+                      .map((problem) => (
+                        <p key={problem}>{problem}</p>
+                      ))}
+                    {couponRejected && serverQuote?.coupon?.message !== orderError && (
+                      <p>{serverQuote?.coupon?.message} Remove the code or enter another one to continue.</p>
+                    )}
+                    {pricingError && <p>{pricingError}</p>}
+                    {cartProblems.length > 0 && (
+                      <p>
+                        <Link href="/cart" className="font-semibold underline underline-offset-2 hover:no-underline">
+                          Go back to your cart
+                        </Link>{' '}
+                        to fix this.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex flex-col-reverse md:flex-row gap-4 mt-6">
                   <button
                     onClick={() => setCurrentStep(1)}
@@ -813,7 +702,7 @@ export default function CheckoutPage() {
                   </button>
                   <button
                     onClick={handleContinueToPayment}
-                    disabled={isLoading || verifying}
+                    disabled={isLoading || verifying || pricing || cartProblems.length > 0 || couponRejected}
                     className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-4 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer disabled:opacity-70 flex items-center justify-center"
                   >
                     {isLoading ? (
@@ -859,9 +748,16 @@ export default function CheckoutPage() {
               items={cart}
               subtotal={subtotal}
               shipping={shippingCost}
-              tax={tax}
+              shippingLabel={
+                currentStep === 1 && !isGhana && !shippingData.countryCode ? 'Choose a country' : undefined
+              }
+              discount={discount}
+              discountLabel={serverQuote?.coupon?.ok ? `Discount (${serverQuote.coupon.code})` : undefined}
               total={total}
-            />
+              currency={orderCurrency}
+            >
+              <CouponBox coupon={serverQuote?.coupon ?? null} checking={pricing} />
+            </OrderSummary>
           </div>
         </div>
       </div>

@@ -56,12 +56,16 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: 'Missing order identifier' }, { status: 400 });
             }
 
-            const orderRef = payload.order_number || payload.id;
+            const orderRef = String(payload.order_number || payload.id);
+            if (!/^[A-Za-z0-9-]{6,64}$/.test(orderRef)) {
+                return NextResponse.json({ error: 'Invalid order identifier' }, { status: 400 });
+            }
+            const byId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderRef);
             const { data: order, error: orderError } = await supabaseAdmin
                 .from('orders')
-                .select('id, order_number, created_at')
-                .or(`order_number.eq.${orderRef},id.eq.${orderRef}`)
-                .single();
+                .select('*')
+                .eq(byId ? 'id' : 'order_number', orderRef)
+                .maybeSingle();
 
             if (orderError || !order) {
                 return NextResponse.json({ error: 'Order not found' }, { status: 404 });
@@ -73,7 +77,9 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: 'Order confirmation can only be sent for recent orders' }, { status: 400 });
             }
 
-            await sendOrderConfirmation(payload);
+            // Always send from the saved order, never from what the browser posted:
+            // the recipient, name and amounts must be the order's own.
+            await sendOrderConfirmation(order);
             return NextResponse.json({ success: true, message: 'Order confirmation sent' });
         }
 
@@ -149,7 +155,19 @@ export async function POST(request: Request) {
             if (!payload.id || !payload.order_number) {
                 return NextResponse.json({ error: 'Missing order details' }, { status: 400 });
             }
-            await sendPaymentLink(payload);
+            // Send from the saved order so the amount and currency are the real ones.
+            const { data: linkOrder } = await supabaseAdmin
+                .from('orders')
+                .select('*')
+                .eq('order_number', String(payload.order_number))
+                .maybeSingle();
+            if (!linkOrder) {
+                return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+            }
+            if (linkOrder.payment_status === 'paid') {
+                return NextResponse.json({ error: 'This order is already paid' }, { status: 400 });
+            }
+            await sendPaymentLink(linkOrder);
             return NextResponse.json({ success: true, message: 'Payment link sent' });
         }
 

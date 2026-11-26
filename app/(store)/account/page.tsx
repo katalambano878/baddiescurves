@@ -42,6 +42,14 @@ function AccountContent() {
   const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
 
+  // "Change Password" on the Security tab opens the form on the Profile tab.
+  const [scrollToPassword, setScrollToPassword] = useState(false);
+  useEffect(() => {
+    if (!scrollToPassword || activeTab !== 'profile') return;
+    document.getElementById('change-password')?.scrollIntoView({ block: 'start' });
+    setScrollToPassword(false);
+  }, [scrollToPassword, activeTab]);
+
   useEffect(() => {
     async function checkUser() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -55,7 +63,8 @@ function AccountContent() {
         firstName: session.user.user_metadata?.first_name || '',
         lastName: session.user.user_metadata?.last_name || '',
         email: session.user.email || '',
-        phone: session.user.phone || ''
+        // The profile form saves the phone into user_metadata, so read it back from there.
+        phone: session.user.user_metadata?.phone || session.user.phone || ''
       });
       setLoading(false);
     }
@@ -68,16 +77,36 @@ function AccountContent() {
     setProfileMessage({ type: '', text: '' });
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const firstName = profileData.firstName.trim();
+      const lastName = profileData.lastName.trim();
+      const phone = profileData.phone.trim();
+
+      const { data, error } = await supabase.auth.updateUser({
         data: {
-          first_name: profileData.firstName,
-          last_name: profileData.lastName,
-          phone: profileData.phone // Storing phone in metadata for now
+          first_name: firstName,
+          last_name: lastName,
+          phone
         }
       });
 
       if (error) throw error;
-      setProfileMessage({ type: 'success', text: 'Profile updated successfully!' });
+
+      // Keep the customer's profile row (what the shop sees) in step.
+      const userId = data.user?.id || user?.id;
+      if (userId) {
+        const fullName = [firstName, lastName].filter(Boolean).join(' ');
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ phone, ...(fullName ? { full_name: fullName } : {}) })
+          .eq('id', userId);
+        if (profileError) {
+          throw new Error('Your details were not fully saved. Please try again.');
+        }
+      }
+
+      if (data.user) setUser(data.user);
+      setProfileData(prev => ({ ...prev, firstName, lastName, phone }));
+      setProfileMessage({ type: 'success', text: 'Profile saved.' });
     } catch (err: any) {
       setProfileMessage({ type: 'error', text: err.message });
     } finally {
@@ -91,8 +120,8 @@ function AccountContent() {
       setPasswordMessage({ type: 'error', text: 'Passwords do not match' });
       return;
     }
-    if (passwordData.password.length < 6) {
-      setPasswordMessage({ type: 'error', text: 'Password must be at least 6 characters' });
+    if (passwordData.password.length < 8) {
+      setPasswordMessage({ type: 'error', text: 'Password must be at least 8 characters' });
       return;
     }
 
@@ -127,35 +156,12 @@ function AccountContent() {
     );
   }
 
-  const quickActions = [
-    {
-      icon: 'ri-medal-line',
-      title: 'Loyalty Program',
-      description: 'Earn points and rewards',
-      link: '/loyalty'
-    },
-    {
-      icon: 'ri-user-add-line',
-      title: 'Refer & Earn',
-      description: 'Invite friends and earn rewards',
-      link: '/referral'
-    }
-  ];
-
   const securityOptions = [
     {
-      icon: 'ri-mail-check-line',
-      title: 'Verify Email',
-      description: user?.email,
-      status: user?.email_confirmed_at ? 'verified' : 'unverified',
-      link: '#' // /account/verify-email
-    },
-    {
-      icon: 'ri-phone-line',
-      title: 'Verify Phone',
-      description: user?.phone || 'No phone added',
-      status: user?.phone_confirmed_at ? 'verified' : 'unverified',
-      link: '#' // /account/verify-phone
+      icon: 'ri-shield-user-line',
+      title: 'Privacy & Data',
+      description: 'Download your data or ask us to delete your account',
+      link: '/account/privacy'
     }
   ];
 
@@ -311,7 +317,7 @@ function AccountContent() {
                       </div>
                     </form>
 
-                    <div className="mt-12 pt-12 border-t border-gray-100">
+                    <div id="change-password" className="mt-12 pt-12 border-t border-gray-100 scroll-mt-24">
                       <h3 className="text-xl font-bold text-gray-900 mb-2">Change Password</h3>
                       <p className="text-gray-500 mb-6">Ensure your account uses a strong, unique password.</p>
 
@@ -369,6 +375,27 @@ function AccountContent() {
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Security Settings</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('profile');
+                          setScrollToPassword(true);
+                        }}
+                        className="flex items-center justify-between p-5 border border-gray-200 rounded-2xl hover:border-blue-500 hover:shadow-md transition-all group bg-white text-left"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors flex-shrink-0">
+                            <i className="ri-lock-password-line text-xl"></i>
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-gray-900 truncate">Change Password</h3>
+                            <p className="text-sm text-gray-500 truncate">Set a new password for your account</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <i className="ri-arrow-right-line text-gray-300 group-hover:text-blue-500 transition-colors"></i>
+                        </div>
+                      </button>
                       {securityOptions.map((option, index) => (
                         <Link
                           key={index}
@@ -385,16 +412,6 @@ function AccountContent() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3 flex-shrink-0">
-                            {option.status === 'verified' && (
-                              <span className="text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
-                                <i className="ri-verified-badge-fill"></i> <span className="hidden sm:inline">Verified</span>
-                              </span>
-                            )}
-                            {option.status === 'unverified' && (
-                              <span className="text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 bg-amber-100 text-amber-700 rounded-full flex items-center gap-1">
-                                <i className="ri-error-warning-fill"></i> <span className="hidden sm:inline">Verify</span>
-                              </span>
-                            )}
                             <i className="ri-arrow-right-line text-gray-300 group-hover:text-blue-500 transition-colors"></i>
                           </div>
                         </Link>

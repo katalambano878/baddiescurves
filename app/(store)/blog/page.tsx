@@ -32,26 +32,7 @@ export default function BlogPage() {
       date: 'December 10, 2024',
       readTime: '7 min read',
       author: 'BADDIECURVES'
-    },
-    {
-      id: '1',
-      title: 'How to Choose the Right Waist Trainer for Your Body',
-      excerpt: 'Steelbone count, torso length, and compression tips for a confident, lasting fit.',
-      image: '/hero1.jpeg',
-      category: 'Fit Guides',
-      date: 'December 15, 2024',
-      readTime: '8 min read',
-      author: 'BADDIECURVES'
     }
-  ];
-
-  const categories = [
-    { name: 'All Posts', count: 12, icon: 'ri-article-line' },
-    { name: 'Fit Guides', count: 5, icon: 'ri-ruler-line' },
-    { name: 'Shapewear', count: 4, icon: 'ri-t-shirt-line' },
-    { name: 'Post-Op', count: 3, icon: 'ri-heart-pulse-line' },
-    { name: 'Athleisure', count: 6, icon: 'ri-run-line' },
-    { name: 'Care Tips', count: 2, icon: 'ri-hand-heart-line' }
   ];
 
   return (
@@ -102,26 +83,8 @@ export default function BlogPage() {
           </div>
         </Link>
 
-        <div className="grid lg:grid-cols-4 gap-12">
-          <div className="lg:col-span-1">
-            <h3 className="text-lg font-bold text-gray-900 mb-6">Categories</h3>
-            <div className="space-y-2">
-              {categories.map((cat) => (
-                <button
-                  key={cat.name}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-gray-50 transition-colors text-left"
-                >
-                  <span className="flex items-center gap-3 text-gray-700">
-                    <i className={`${cat.icon} text-lg`}></i>
-                    {cat.name}
-                  </span>
-                  <span className="text-sm text-gray-400">{cat.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="lg:col-span-3">
+        <div>
+          <div>
             <div className="grid md:grid-cols-2 gap-8">
               {posts.map((post) => (
                 <Link

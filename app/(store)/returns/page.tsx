@@ -1,79 +1,118 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCurrency } from '@/lib/currency';
-const mockOrders = [
-  {
-    id: 'ORD-2024-156',
-    date: '2024-01-20',
-    items: [
-      {
-        id: 1,
-        name: 'Sleeveless Bodysuit',
-        price: 40,
-        image: '/logo.png?v=5',
-        returnable: true
-      },
-      {
-        id: 2,
-        name: '25 Steelbone Waist Trainer',
-        price: 55,
-        image: '/logo.png?v=5',
-        returnable: true
-      }
-    ]
-  }
+import { supabase } from '@/lib/supabase';
+import { useRecaptcha } from '@/hooks/useRecaptcha';
+
+const reasons = [
+  'Wrong size/fit',
+  'Wrong item received',
+  'Defective/damaged item',
+  'Not as described',
+  'Changed my mind',
+  'Better price elsewhere',
+  'No longer needed',
+  'Other'
 ];
 
+type FormState = {
+  orderNumber: string;
+  name: string;
+  email: string;
+  phone: string;
+  items: string;
+  reason: string;
+  details: string;
+};
+
+const inputClass = (error?: string) =>
+  `w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+    error ? 'border-red-500' : 'border-gray-300'
+  }`;
+
 export default function ReturnsPortalPage() {
-  const { formatPrice } = useCurrency();
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [orderNumber, setOrderNumber] = useState('');
-  const [email, setEmail] = useState('');
-  const [selectedItems, setSelectedItems] = useState<number[]>([]);
-  const [returnReasons, setReturnReasons] = useState<Record<number, string>>({});
-  const [returnType, setReturnType] = useState<'refund' | 'exchange'>('refund');
+  const { getToken, verifying } = useRecaptcha();
+  const [form, setForm] = useState<FormState>({
+    orderNumber: '',
+    name: '',
+    email: '',
+    phone: '',
+    items: '',
+    reason: '',
+    details: ''
+  });
+  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [submitError, setSubmitError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [foundOrder, setFoundOrder] = useState<any>(null);
 
-  const reasons = [
-    'Wrong size/fit',
-    'Wrong item received',
-    'Defective/damaged item',
-    'Not as described',
-    'Changed my mind',
-    'Better price elsewhere',
-    'No longer needed',
-    'Other'
-  ];
+  const setField = (key: keyof FormState, value: string) =>
+    setForm(prev => ({ ...prev, [key]: value }));
 
-  const handleFindOrder = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => {
-      setFoundOrder(mockOrders[0]);
-      setIsLoading(false);
-      setStep(2);
-    }, 1000);
-  };
+    setSubmitError('');
 
-  const toggleItemSelection = (itemId: number) => {
-    setSelectedItems(prev =>
-      prev.includes(itemId)
-        ? prev.filter(id => id !== itemId)
-        : [...prev, itemId]
-    );
-  };
+    const orderNumber = form.orderNumber.trim();
+    const name = form.name.trim();
+    const email = form.email.trim();
+    const phone = form.phone.trim();
+    const items = form.items.trim();
+    const details = form.details.trim();
 
-  const handleSubmitReturn = () => {
+    const newErrors: Partial<Record<keyof FormState, string>> = {};
+    if (!orderNumber) newErrors.orderNumber = 'Enter your order number. It is in your order confirmation.';
+    if (!name) newErrors.name = 'Enter your name.';
+    if (!email) newErrors.email = 'Enter your email address.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Enter a valid email address.';
+    if (phone.replace(/\D/g, '').length < 7) newErrors.phone = 'Enter a phone number we can reach you on.';
+    if (!items) newErrors.items = 'Tell us which items you want to return.';
+    if (!form.reason) newErrors.reason = 'Choose a reason.';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const isHuman = await getToken('return_request');
+      if (!isHuman) {
+        setSubmitError('Security check failed. Please try again.');
+        return;
+      }
+
+      const subject = `Return request – ${orderNumber}`;
+      const message = [
+        `Order number: ${orderNumber}`,
+        `Phone: ${phone}`,
+        `Items to return: ${items}`,
+        `Reason: ${form.reason}`,
+        details ? `Details: ${details}` : ''
+      ].filter(Boolean).join('\n');
+
+      const { error } = await supabase
+        .from('contact_submissions')
+        .insert({ name, email, phone, subject, message });
+      if (error) throw error;
+
+      // Tell the shop by email as well (same notification the contact form uses).
+      fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'contact', payload: { name, email, phone, subject, message } })
+      }).catch(err => console.error('Return request notification error:', err));
+
+      try {
+        sessionStorage.setItem('return_request_sent', orderNumber);
+      } catch {
+        // Storage blocked: the confirmation page falls back to this form.
+      }
       router.push('/returns/confirmation');
-    }, 1500);
+    } catch (err) {
+      console.error('Return request failed:', err);
+      setSubmitError('Your request was not sent. Check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -94,257 +133,158 @@ export default function ReturnsPortalPage() {
             </div>
           </div>
 
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center flex-1">
-                  <div className={`w-10 h-10 flex items-center justify-center rounded-full font-bold ${
-                    i <= step ? 'bg-blue-700 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
-                    {i < step ? <i className="ri-check-line"></i> : i}
-                  </div>
-                  {i < 3 && (
-                    <div className={`flex-1 h-1 mx-4 ${
-                      i < step ? 'bg-blue-700' : 'bg-gray-200'
-                    }`}></div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between mt-2">
-              <span className="text-sm font-semibold text-gray-900">Find Order</span>
-              <span className="text-sm font-semibold text-gray-900">Select Items</span>
-              <span className="text-sm font-semibold text-gray-900">Submit</span>
-            </div>
-          </div>
+          <div className="bg-white rounded-xl shadow-sm p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Request a Return</h2>
+            <p className="text-gray-600 mb-6">Send us the details below. We will reply by email or phone.</p>
 
-          {step === 1 && (
-            <div className="bg-white rounded-xl shadow-sm p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Find Your Order</h2>
-              <form onSubmit={handleFindOrder} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Order Number *
-                  </label>
-                  <input
-                    type="text"
-                    value={orderNumber}
-                    onChange={(e) => setOrderNumber(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="ORD-2024-156"
-                    required
-                  />
-                </div>
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+              <div>
+                <label htmlFor="return-order" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Order Number *
+                </label>
+                <input
+                  id="return-order"
+                  type="text"
+                  value={form.orderNumber}
+                  onChange={(e) => setField('orderNumber', e.target.value)}
+                  maxLength={60}
+                  className={inputClass(errors.orderNumber)}
+                  placeholder="ORD-..."
+                />
+                {errors.orderNumber && <p className="text-sm text-red-600 mt-2">{errors.orderNumber}</p>}
+              </div>
 
+              <div>
+                <label htmlFor="return-name" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Full Name *
+                </label>
+                <input
+                  id="return-name"
+                  type="text"
+                  autoComplete="name"
+                  value={form.name}
+                  onChange={(e) => setField('name', e.target.value)}
+                  maxLength={100}
+                  className={inputClass(errors.name)}
+                />
+                {errors.name && <p className="text-sm text-red-600 mt-2">{errors.name}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  <label htmlFor="return-email" className="block text-sm font-semibold text-gray-900 mb-2">
                     Email Address *
                   </label>
                   <input
+                    id="return-email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="email"
+                    value={form.email}
+                    onChange={(e) => setField('email', e.target.value)}
+                    maxLength={200}
+                    className={inputClass(errors.email)}
                     placeholder="you@example.com"
-                    required
                   />
+                  {errors.email && <p className="text-sm text-red-600 mt-2">{errors.email}</p>}
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-blue-700 hover:bg-blue-800 text-white py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  {isLoading ? 'Finding Order...' : 'Find Order'}
-                </button>
-              </form>
-
-              <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-start space-x-3">
-                  <i className="ri-information-line text-xl text-blue-700 mt-0.5"></i>
-                  <div className="text-sm text-blue-700">
-                    <p className="font-semibold mb-1">BADDIECURVES Return Policy Highlights</p>
-                    <ul className="space-y-1">
-                      <li>• Returns accepted within the United States for eligible items in new condition with original packaging and tags.</li>
-                      <li>• Items must be in new condition — no wear, odors, stains, glitter, or dampness. Restocking fees may apply if not in original condition.</li>
-                      <li>• Returns are processed as <strong>store credit</strong>. Exchanges depend on options available on the return platform at the time you submit.</li>
-                      <li>• Customer is responsible for shipping fees to and from. Send all items in one package when returning multiple items.</li>
-                      <li>• We physically inspect each return; processing takes 4–7 business days after we receive the item.</li>
-                      <li>• Follow the steps on this returns page and include your order confirmation when initiating a return.</li>
-                    </ul>
-                  </div>
+                <div>
+                  <label htmlFor="return-phone" className="block text-sm font-semibold text-gray-900 mb-2">
+                    Phone Number *
+                  </label>
+                  <input
+                    id="return-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    value={form.phone}
+                    onChange={(e) => setField('phone', e.target.value)}
+                    maxLength={30}
+                    className={inputClass(errors.phone)}
+                  />
+                  {errors.phone && <p className="text-sm text-red-600 mt-2">{errors.phone}</p>}
                 </div>
               </div>
-            </div>
-          )}
 
-          {step === 2 && foundOrder && (
-            <div className="bg-white rounded-xl shadow-sm p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Select Items to Return</h2>
-              
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">
-                  Order #{foundOrder.id} • Placed on {foundOrder.date}
-                </p>
-              </div>
-
-              <div className="space-y-4 mb-8">
-                {foundOrder.items.map((item: any) => (
-                  <div key={item.id} className="border-2 border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start space-x-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(item.id)}
-                        onChange={() => toggleItemSelection(item.id)}
-                        className="mt-1 w-5 h-5 text-blue-700 rounded border-gray-300 focus:ring-blue-500"
-                      />
-                      <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover object-top" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 mb-1">{item.name}</p>
-                        <p className="text-lg font-bold text-gray-900 mb-3">{formatPrice(item.price)}</p>
-                        
-                        {selectedItems.includes(item.id) && (
-                          <div className="mt-4">
-                            <label className="block text-sm font-semibold text-gray-900 mb-2">
-                              Reason for return *
-                            </label>
-                            <select
-                              value={returnReasons[item.id] || ''}
-                              onChange={(e) => setReturnReasons({
-                                ...returnReasons,
-                                [item.id]: e.target.value
-                              })}
-                              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-8"
-                              required
-                            >
-                              <option value="">Select a reason</option>
-                              {reasons.map((reason) => (
-                                <option key={reason} value={reason}>{reason}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mb-8">
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
-                  What would you like to do? *
+              <div>
+                <label htmlFor="return-items" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Items to Return *
                 </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setReturnType('refund')}
-                    className={`p-4 rounded-lg border-2 text-left transition-all ${
-                      returnType === 'refund'
-                        ? 'border-blue-700 bg-blue-50'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                  >
-                    <i className="ri-refund-line text-2xl text-blue-700 mb-2"></i>
-                    <p className="font-semibold text-gray-900">Get a Refund</p>
-                    <p className="text-sm text-gray-600 mt-1">Money back to original payment</p>
-                  </button>
+                <textarea
+                  id="return-items"
+                  rows={3}
+                  value={form.items}
+                  onChange={(e) => setField('items', e.target.value)}
+                  maxLength={1000}
+                  className={`${inputClass(errors.items)} resize-none`}
+                  placeholder="Item name, size and color for each item"
+                ></textarea>
+                {errors.items && <p className="text-sm text-red-600 mt-2">{errors.items}</p>}
+              </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setReturnType('exchange')}
-                    className={`p-4 rounded-lg border-2 text-left transition-all ${
-                      returnType === 'exchange'
-                        ? 'border-blue-700 bg-blue-50'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                  >
-                    <i className="ri-exchange-line text-2xl text-blue-700 mb-2"></i>
-                    <p className="font-semibold text-gray-900">Exchange Item</p>
-                    <p className="text-sm text-gray-600 mt-1">Get a different size or color</p>
-                  </button>
+              <div>
+                <label htmlFor="return-reason" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Reason for Return *
+                </label>
+                <select
+                  id="return-reason"
+                  value={form.reason}
+                  onChange={(e) => setField('reason', e.target.value)}
+                  className={`${inputClass(errors.reason)} pr-8`}
+                >
+                  <option value="">Select a reason</option>
+                  {reasons.map((reason) => (
+                    <option key={reason} value={reason}>{reason}</option>
+                  ))}
+                </select>
+                {errors.reason && <p className="text-sm text-red-600 mt-2">{errors.reason}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="return-details" className="block text-sm font-semibold text-gray-900 mb-2">
+                  More Details <span className="font-normal text-gray-500">(optional)</span>
+                </label>
+                <textarea
+                  id="return-details"
+                  rows={3}
+                  value={form.details}
+                  onChange={(e) => setField('details', e.target.value)}
+                  maxLength={1000}
+                  className={`${inputClass()} resize-none`}
+                ></textarea>
+              </div>
+
+              {submitError && (
+                <p className="p-4 bg-red-50 border border-red-100 text-red-700 rounded-lg text-sm" role="alert">
+                  {submitError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading || verifying}
+                className="w-full bg-blue-700 hover:bg-blue-800 text-white py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {isLoading || verifying ? 'Sending...' : 'Send Return Request'}
+              </button>
+            </form>
+
+            <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <i className="ri-information-line text-xl text-blue-700 mt-0.5"></i>
+                <div className="text-sm text-blue-700">
+                  <p className="font-semibold mb-1">BADDIECURVES Return Policy Highlights</p>
+                  <ul className="space-y-1">
+                    <li>• Returns accepted within the United States for eligible items in new condition with original packaging and tags.</li>
+                    <li>• Items must be in new condition — no wear, odors, stains, glitter, or dampness. Restocking fees may apply if not in original condition.</li>
+                    <li>• Returns are processed as <strong>store credit</strong>. Exchanges depend on options available on the return platform at the time you submit.</li>
+                    <li>• Customer is responsible for shipping fees to and from. Send all items in one package when returning multiple items.</li>
+                    <li>• We physically inspect each return; processing takes 4–7 business days after we receive the item.</li>
+                    <li>• Follow the steps on this returns page and include your order confirmation when initiating a return.</li>
+                  </ul>
                 </div>
               </div>
-
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => setStep(1)}
-                  className="flex-1 py-4 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors whitespace-nowrap"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => setStep(3)}
-                  disabled={selectedItems.length === 0 || !selectedItems.every(id => returnReasons[id])}
-                  className="flex-1 py-4 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  Continue
-                </button>
-              </div>
             </div>
-          )}
-
-          {step === 3 && (
-            <div className="bg-white rounded-xl shadow-sm p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Review & Submit</h2>
-
-              <div className="mb-8">
-                <h3 className="font-semibold text-gray-900 mb-4">Return Summary</h3>
-                <div className="space-y-3">
-                  {foundOrder.items
-                    .filter((item: any) => selectedItems.includes(item.id))
-                    .map((item: any) => (
-                      <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-semibold text-gray-900">{item.name}</p>
-                          <p className="text-sm text-gray-600">Reason: {returnReasons[item.id]}</p>
-                        </div>
-                        <p className="font-bold text-gray-900">{formatPrice(item.price)}</p>
-                      </div>
-                    ))}
-                </div>
-              </div>
-
-              <div className="mb-8 p-6 border-2 border-blue-200 bg-blue-50 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-4">Next Steps</h3>
-                <ol className="space-y-2 text-sm text-gray-700">
-                  <li className="flex items-start space-x-2">
-                    <span className="font-bold">1.</span>
-                    <span>Print your prepaid return label (sent to your email)</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="font-bold">2.</span>
-                    <span>Pack items securely in original packaging</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="font-bold">3.</span>
-                    <span>Attach the label and drop off at any shipping location</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="font-bold">4.</span>
-                    <span>Track your return status in your account</span>
-                  </li>
-                </ol>
-              </div>
-
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => setStep(2)}
-                  className="flex-1 py-4 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors whitespace-nowrap"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={handleSubmitReturn}
-                  disabled={isLoading}
-                  className="flex-1 py-4 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  {isLoading ? 'Submitting...' : 'Submit Return Request'}
-                </button>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </main>
   );

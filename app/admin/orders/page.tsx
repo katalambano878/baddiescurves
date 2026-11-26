@@ -1,16 +1,19 @@
 'use client';
 
-import { money } from '@/lib/format-money';
+import { asNumber, formatMoney, normalizeCurrency } from '@/lib/format-money';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { adminFetch } from '@/lib/admin-fetch';
 import ProductSalesStats from './ProductSalesStats';
+import { downloadCsv } from './csv';
 
 interface Order {
   id: string;
   order_number: string;
   email: string;
   total: number;
+  currency?: string | null;
   status: string;
   payment_status: string;
   payment_method: string;
@@ -35,6 +38,35 @@ interface OrderStats {
   status: string;
 }
 
+type OrderViewTab = 'confirmed' | 'abandoned' | 'other';
+
+/**
+ * confirmed: paid.
+ * abandoned: payment still pending and the order is not cancelled (a payment link can still be used).
+ * other: everything else that is not paid (failed, refunded, cancelled).
+ */
+const orderTab = (order: { payment_status?: string | null; status?: string | null }): OrderViewTab => {
+  if (order.payment_status === 'paid') return 'confirmed';
+  const paymentPending = !order.payment_status || order.payment_status === 'pending';
+  if (paymentPending && order.status !== 'cancelled') return 'abandoned';
+  return 'other';
+};
+
+// Labels for the values stored in orders.payment_method / orders.shipping_method.
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  moolre: 'Mobile money (Moolre)',
+  paypal: 'PayPal',
+  cash: 'Cash',
+  card: 'Card',
+};
+const SHIPPING_METHOD_LABELS: Record<string, string> = {
+  doorstep: 'Doorstep delivery',
+  pickup: 'Store pickup',
+  international: 'International shipping',
+};
+const methodLabel = (labels: Record<string, string>, value: string) =>
+  labels[value] || value.charAt(0).toUpperCase() + value.slice(1);
+
 export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -43,7 +75,12 @@ export default function AdminOrdersPage() {
   const [sortBy, setSortBy] = useState('date');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [orderViewTab, setOrderViewTab] = useState<'confirmed' | 'abandoned'>('confirmed');
+  const [orderViewTab, setOrderViewTab] = useState<OrderViewTab>('confirmed');
+  const [otherCount, setOtherCount] = useState(0);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
+  const [shippingMethodFilter, setShippingMethodFilter] = useState('all');
   const [sendingPaymentLink, setSendingPaymentLink] = useState<string | null>(null);
   const [orderStats, setOrderStats] = useState<OrderStats[]>([
     { label: 'All Orders', count: 0, status: 'all' },
@@ -75,6 +112,7 @@ export default function AdminOrdersPage() {
           order_number,
           email,
           total,
+          currency,
           status,
           payment_status,
           payment_method,
@@ -112,12 +150,15 @@ export default function AdminOrdersPage() {
       });
       setAvailableProducts(Array.from(productNames).sort());
 
-      // Separate confirmed (paid) from abandoned (pending payment)
-      const confirmedOrders = ordersData?.filter(o => o.payment_status === 'paid') || [];
-      const abandonedOrders = ordersData?.filter(o => o.payment_status !== 'paid') || [];
-      
+      // Separate confirmed (paid) from abandoned (payment pending, not cancelled).
+      // Failed, refunded and cancelled unpaid orders are neither: they get their own tab.
+      const confirmedOrders = ordersData?.filter(o => orderTab(o) === 'confirmed') || [];
+      const abandonedOrders = ordersData?.filter(o => orderTab(o) === 'abandoned') || [];
+      const otherOrders = ordersData?.filter(o => orderTab(o) === 'other') || [];
+
       setConfirmedCount(confirmedOrders.length);
       setAbandonedCount(abandonedOrders.length);
+      setOtherCount(otherOrders.length);
 
       // Calculate stats based on confirmed orders only
       const stats = [
@@ -259,62 +300,80 @@ export default function AdminOrdersPage() {
         alert('Failed to update orders');
       }
     } else if (action === 'Export') {
-      const ordersToExport = orders.filter(o => selectedOrders.includes(o.id));
-      const csvContent = `Order ID,Customer,Email,Date,Items,Total,Status,Payment\n${ordersToExport.map(o =>
-        `${o.order_number || o.id},${getCustomerName(o)},${getCustomerEmail(o)},${formatDate(o.created_at)},${getItemCount(o)},${o.total},${o.status},${o.payment_method || 'N/A'}`
-      ).join('\n')}`;
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'selected-orders.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      exportOrders(orders.filter(o => selectedOrders.includes(o.id)), 'selected-orders.csv');
     }
   };
 
+  // One row per order. The total stays a plain number with its currency in the next column.
+  const exportOrders = (rows: Order[], filename: string) => {
+    downloadCsv(
+      filename,
+      ['Order ID', 'Customer', 'Email', 'Phone', 'Date', 'Items', 'Total', 'Currency', 'Order status', 'Payment status', 'Payment method', 'Shipping method'],
+      rows.map(o => [
+        o.order_number || o.id,
+        getCustomerName(o),
+        getCustomerEmail(o),
+        o.phone || o.shipping_address?.phone || '',
+        formatDate(o.created_at),
+        getItemCount(o),
+        asNumber(o.total).toFixed(2),
+        normalizeCurrency(o.currency),
+        o.status || '',
+        o.payment_status || '',
+        o.payment_method || '',
+        o.shipping_method || ''
+      ])
+    );
+  };
+
+  // Exports exactly what the table shows: current tab, search, filters and sort.
   const handleExportAll = () => {
-    const csvContent = `Order ID,Customer,Email,Date,Items,Total,Status,Payment\n${orders.map(o =>
-      `${o.order_number || o.id},${getCustomerName(o)},${getCustomerEmail(o)},${formatDate(o.created_at)},${getItemCount(o)},${o.total},${o.status},${o.payment_method || 'N/A'}`
-    ).join('\n')}`;
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'all-orders.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    const tabName =
+      orderViewTab === 'confirmed' ? 'confirmed-orders' : orderViewTab === 'abandoned' ? 'abandoned-carts' : 'unpaid-closed-orders';
+    exportOrders(filteredOrders, `${tabName}.csv`);
   };
 
   const handlePrintInvoice = (orderId: string) => {
+    // The order page prints its packing slip when it sees ?print=true
     window.open(`/admin/orders/${orderId}?print=true`, '_blank');
   };
 
   const handleResendPaymentLink = async (order: Order) => {
     setSendingPaymentLink(order.id);
     try {
-      const response = await fetch('/api/notifications', {
+      await adminFetch('/api/notifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'payment_link',
           payload: order
         })
       });
-      
-      if (!response.ok) throw new Error('Failed to send');
-      
-      alert(`Payment link sent to ${order.phone || order.email}`);
-    } catch (error) {
+
+      alert(`Payment link sent to the SMS/email provider for ${order.phone || order.email}`);
+    } catch (error: any) {
       console.error('Error sending payment link:', error);
-      alert('Failed to send payment link');
+      alert(`Could not send the payment link: ${error?.message || 'Unknown error'}`);
     } finally {
       setSendingPaymentLink(null);
     }
+  };
+
+  // Filter options come from the values actually stored on the loaded orders.
+  const paymentMethods = Array.from(new Set(orders.map(o => o.payment_method).filter(Boolean))).sort();
+  const shippingMethods = Array.from(new Set(orders.map(o => o.shipping_method).filter(Boolean))).sort();
+  const activeFilterCount =
+    (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (paymentMethodFilter !== 'all' ? 1 : 0) + (shippingMethodFilter !== 'all' ? 1 : 0);
+  const clearFilters = () => {
+    setDateFrom('');
+    setDateTo('');
+    setPaymentMethodFilter('all');
+    setShippingMethodFilter('all');
+  };
+
+  // Local calendar day of the order, as YYYY-MM-DD, to compare with the date inputs.
+  const orderDay = (dateString: string) => {
+    const d = new Date(dateString);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
   const filteredOrders = orders.filter(order => {
@@ -322,17 +381,34 @@ export default function AdminOrdersPage() {
     const customerEmail = getCustomerEmail(order).toLowerCase();
     const orderId = (order.order_number || order.id).toLowerCase();
 
-    // First filter by view tab (confirmed vs abandoned)
-    const isConfirmed = order.payment_status === 'paid';
-    const matchesViewTab = orderViewTab === 'confirmed' ? isConfirmed : !isConfirmed;
+    // First filter by view tab (confirmed / abandoned / other unpaid)
+    const matchesViewTab = orderTab(order) === orderViewTab;
 
     const matchesSearch = orderId.includes(searchQuery.toLowerCase()) ||
       customerName.includes(searchQuery.toLowerCase()) ||
       customerEmail.includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesProduct = productFilter === 'all' || 
+    const matchesProduct = productFilter === 'all' ||
       order.order_items?.some((item: any) => item.product_name === productFilter);
-    return matchesViewTab && matchesSearch && matchesStatus && matchesProduct;
+    const day = orderDay(order.created_at);
+    const matchesDate = (!dateFrom || day >= dateFrom) && (!dateTo || day <= dateTo);
+    const matchesPayment = paymentMethodFilter === 'all' || order.payment_method === paymentMethodFilter;
+    const matchesShipping = shippingMethodFilter === 'all' || order.shipping_method === shippingMethodFilter;
+    return matchesViewTab && matchesSearch && matchesStatus && matchesProduct && matchesDate && matchesPayment && matchesShipping;
+  }).sort((a, b) => {
+    const newestFirst = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (sortBy === 'total') {
+      // Cedis and dollars cannot be ranked against each other: group by currency, highest first.
+      const byCurrency = normalizeCurrency(a.currency).localeCompare(normalizeCurrency(b.currency));
+      return byCurrency || asNumber(b.total) - asNumber(a.total) || newestFirst;
+    }
+    if (sortBy === 'customer') {
+      return getCustomerName(a).localeCompare(getCustomerName(b), undefined, { sensitivity: 'base' }) || newestFirst;
+    }
+    if (sortBy === 'status') {
+      return String(a.status || '').localeCompare(String(b.status || '')) || newestFirst;
+    }
+    return newestFirst;
   });
 
   return (
@@ -363,7 +439,7 @@ export default function AdminOrdersPage() {
       {/* View Tabs: Confirmed Orders vs Abandoned Carts */}
       <div className="flex border-b border-gray-200">
         <button
-          onClick={() => { setOrderViewTab('confirmed'); setStatusFilter('all'); }}
+          onClick={() => { setOrderViewTab('confirmed'); setStatusFilter('all'); setSelectedOrders([]); }}
           className={`px-6 py-3 font-semibold text-sm border-b-2 transition-colors cursor-pointer ${
             orderViewTab === 'confirmed'
               ? 'border-blue-700 text-blue-700'
@@ -374,7 +450,7 @@ export default function AdminOrdersPage() {
           Confirmed Orders ({confirmedCount})
         </button>
         <button
-          onClick={() => { setOrderViewTab('abandoned'); setStatusFilter('all'); }}
+          onClick={() => { setOrderViewTab('abandoned'); setStatusFilter('all'); setSelectedOrders([]); }}
           className={`px-6 py-3 font-semibold text-sm border-b-2 transition-colors cursor-pointer ${
             orderViewTab === 'abandoned'
               ? 'border-amber-600 text-amber-600'
@@ -384,6 +460,19 @@ export default function AdminOrdersPage() {
           <i className="ri-shopping-cart-2-line mr-2"></i>
           Abandoned Carts ({abandonedCount})
         </button>
+        {(otherCount > 0 || orderViewTab === 'other') && (
+          <button
+            onClick={() => { setOrderViewTab('other'); setStatusFilter('all'); setSelectedOrders([]); }}
+            className={`px-6 py-3 font-semibold text-sm border-b-2 transition-colors cursor-pointer ${
+              orderViewTab === 'other'
+                ? 'border-gray-700 text-gray-900'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <i className="ri-close-circle-line mr-2"></i>
+            Failed, Refunded or Cancelled ({otherCount})
+          </button>
+        )}
       </div>
 
       {orderViewTab === 'confirmed' && (
@@ -412,7 +501,7 @@ export default function AdminOrdersPage() {
             <div>
               <p className="text-sm font-semibold text-amber-800">Abandoned Carts</p>
               <p className="text-sm text-amber-700 mt-1">
-                These orders were created but payment was not completed. You can resend payment links to customers.
+                These orders are still waiting for payment. You can resend the payment link, or open the order and mark it as paid if the customer paid another way.
               </p>
             </div>
           </div>
@@ -441,7 +530,7 @@ export default function AdminOrdersPage() {
                 className="px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:border-gray-400 transition-colors font-medium whitespace-nowrap cursor-pointer"
               >
                 <i className="ri-filter-line mr-2"></i>
-                Filters
+                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
               </button>
               <select
                 value={productFilter}
@@ -458,10 +547,10 @@ export default function AdminOrdersPage() {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="px-4 py-3 pr-8 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium cursor-pointer"
               >
-                <option value="date">Sort by Date</option>
-                <option value="total">Sort by Total</option>
-                <option value="customer">Sort by Customer</option>
-                <option value="status">Sort by Status</option>
+                <option value="date">Newest first</option>
+                <option value="total">Highest total</option>
+                <option value="customer">Customer A–Z</option>
+                <option value="status">Status A–Z</option>
               </select>
             </div>
           </div>
@@ -469,27 +558,63 @@ export default function AdminOrdersPage() {
           {showFilters && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg grid md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Date Range</label>
-                <input type="date" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm" />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Order Date</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    aria-label="From date"
+                    value={dateFrom}
+                    max={dateTo || undefined}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                  />
+                  <span className="text-sm text-gray-500">to</span>
+                  <input
+                    type="date"
+                    aria-label="To date"
+                    value={dateTo}
+                    min={dateFrom || undefined}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Method</label>
-                <select className="w-full px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm cursor-pointer">
-                  <option>All Methods</option>
-                  <option>Moolre</option>
-                  <option>Mobile Money</option>
-                  <option>Card</option>
+                <select
+                  value={paymentMethodFilter}
+                  onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                  className="w-full px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm cursor-pointer"
+                >
+                  <option value="all">All Methods</option>
+                  {paymentMethods.map((method) => (
+                    <option key={method} value={method}>{methodLabel(PAYMENT_METHOD_LABELS, method)}</option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Shipping Method</label>
-                <select className="w-full px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm cursor-pointer">
-                  <option>All Methods</option>
-                  <option>Standard</option>
-                  <option>Express</option>
-                  <option>Store Pickup</option>
+                <select
+                  value={shippingMethodFilter}
+                  onChange={(e) => setShippingMethodFilter(e.target.value)}
+                  className="w-full px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm cursor-pointer"
+                >
+                  <option value="all">All Methods</option>
+                  {shippingMethods.map((method) => (
+                    <option key={method} value={method}>{methodLabel(SHIPPING_METHOD_LABELS, method)}</option>
+                  ))}
                 </select>
               </div>
+              {activeFilterCount > 0 && (
+                <div className="md:col-span-3">
+                  <button
+                    onClick={clearFilters}
+                    className="text-sm font-medium text-blue-700 hover:text-blue-800 cursor-pointer"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -590,13 +715,13 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="py-4 px-4 text-gray-700 text-sm whitespace-nowrap">{formatDate(order.created_at)}</td>
                     <td className="py-4 px-4 text-gray-700">{getItemCount(order)}</td>
-                    <td className="py-4 px-4 font-semibold text-gray-900 whitespace-nowrap">GH₵ {money(order.total) || '0.00'}</td>
+                    <td className="py-4 px-4 font-semibold text-gray-900 whitespace-nowrap">{formatMoney(order.total, order.currency)}</td>
                     <td className="py-4 px-4 text-sm whitespace-nowrap">
                       <div className="flex flex-col">
-                        <span className="text-gray-700">{order.payment_method || 'N/A'}</span>
-                        {orderViewTab === 'abandoned' && (
-                          <span className={`text-xs mt-1 ${order.payment_status === 'failed' ? 'text-red-600' : 'text-amber-600'}`}>
-                            {order.payment_status === 'failed' ? 'Failed' : 'Pending'}
+                        <span className="text-gray-700">{order.payment_method ? methodLabel(PAYMENT_METHOD_LABELS, order.payment_method) : 'N/A'}</span>
+                        {orderViewTab !== 'confirmed' && (
+                          <span className={`text-xs mt-1 ${orderViewTab === 'other' ? 'text-red-600' : 'text-amber-600'}`}>
+                            {formatStatus((order.payment_status || 'pending').replace(/_/g, ' '))}
                           </span>
                         )}
                       </div>
@@ -632,7 +757,8 @@ export default function AdminOrdersPage() {
                         <button
                           onClick={() => handlePrintInvoice(order.id)}
                           className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                          title="Print Invoice"
+                          title="Print packing slip"
+                          aria-label="Print packing slip"
                         >
                           <i className="ri-printer-line text-lg w-4 h-4 flex items-center justify-center"></i>
                         </button>

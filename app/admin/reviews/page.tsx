@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 
 export default function AdminReviewsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
   const [selectedReviews, setSelectedReviews] = useState<string[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,12 +60,13 @@ export default function AdminReviewsPage() {
             name: r.products?.name || 'Unknown Product',
             image: Array.isArray(r.products?.product_images)
               ? r.products.product_images[0]?.url
-              : r.products?.product_images?.url || 'https://via.placeholder.com/150'
+              : r.products?.product_images?.url || '/placeholder-product.svg'
           },
           rating: r.rating,
           title: r.title,
           comment: r.content,
           date: new Date(r.created_at).toLocaleDateString(),
+          createdAt: new Date(r.created_at).getTime() || 0,
           status: r.status || 'Pending',
           helpful: r.helpful || 0
         }));
@@ -89,9 +91,15 @@ export default function AdminReviewsPage() {
       .toUpperCase() || '??';
   };
 
-  const filteredReviews = reviews.filter(r =>
-    statusFilter === 'all' || r.status.toLowerCase() === statusFilter
-  );
+  const filteredReviews = reviews
+    .filter(r => statusFilter === 'all' || r.status.toLowerCase() === statusFilter)
+    .sort((a, b) => {
+      const newestFirst = b.createdAt - a.createdAt;
+      if (sortBy === 'oldest') return a.createdAt - b.createdAt;
+      if (sortBy === 'highest') return (b.rating - a.rating) || newestFirst;
+      if (sortBy === 'lowest') return (a.rating - b.rating) || newestFirst;
+      return newestFirst;
+    });
 
   const stats = {
     total: reviews.length,
@@ -211,10 +219,16 @@ export default function AdminReviewsPage() {
             <h2 className="text-lg font-bold text-gray-900 text-transform capitalize">
               {statusFilter === 'all' ? 'All Reviews' : `${statusFilter} Reviews`}
             </h2>
-            <select className="px-4 py-2 pr-8 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium cursor-pointer">
-              <option>Sort by Date</option>
-              <option>Sort by Rating</option>
-              <option>Sort by Helpful</option>
+            <select
+              aria-label="Sort reviews"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="px-4 py-2 pr-8 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium cursor-pointer"
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="highest">Highest rating</option>
+              <option value="lowest">Lowest rating</option>
             </select>
           </div>
         </div>

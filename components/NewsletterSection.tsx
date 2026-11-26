@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 // Newsletter Component
 export default function NewsletterSection() {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error' | 'invalid'>('idle');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,11 +15,24 @@ export default function NewsletterSection() {
     setSubmitStatus('idle');
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const address = email.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+        setSubmitStatus('invalid');
+        return;
+      }
+
+      // Signups are kept with the shop's other messages, under their own subject.
+      const { error } = await supabase.from('contact_submissions').insert({
+        email: address,
+        subject: 'Newsletter signup',
+        message: 'Please add me to the newsletter list.',
+      });
+      if (error) throw error;
+
       setSubmitStatus('success');
       setEmail('');
     } catch (error) {
+      console.error('Newsletter signup failed:', error);
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);
@@ -45,11 +59,11 @@ export default function NewsletterSection() {
             </div>
 
             <h3 className="text-4xl md:text-5xl lg:text-[56px] font-serif text-gray-900 mb-6 leading-[1.12] tracking-tight">
-              Unlock <span className="italic font-light text-blue-900">10% Off</span> <br /> Your First Order
+              New Drops, <br /> <span className="italic font-light text-blue-900">Straight to You</span>
             </h3>
 
-            <p className="text-gray-500 text-[15.5px] leading-relaxed max-w-[27rem]">
-              Be the first to know about new waist trainers, shapewear drops, restocks, and exclusive deals for every curve.
+            <p className="text-gray-600 text-[15.5px] leading-relaxed max-w-[27rem]">
+              Be the first to know about new waist trainers, shapewear drops and restocks for every curve.
             </p>
           </div>
 
@@ -57,9 +71,12 @@ export default function NewsletterSection() {
           <div className="w-full lg:w-1/2 flex justify-start lg:justify-end">
             <div className="w-full max-w-[28rem] bg-white/60 backdrop-blur-2xl p-2 rounded-[1.25rem] border border-black/[0.03] transition-all duration-500 focus-within:bg-white focus-within:border-black/[0.08] focus-within:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-black/[0.06]">
               <form onSubmit={handleSubmit} className="flex gap-2 relative">
+                <label htmlFor="newsletter-email" className="sr-only">Email address</label>
                 <input
+                  id="newsletter-email"
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email address"
@@ -87,11 +104,24 @@ export default function NewsletterSection() {
         </div>
 
         {submitStatus === 'success' && (
-          <div className="absolute top-6 right-6 lg:right-10 bg-gray-900 text-white px-6 py-3.5 rounded-2xl font-medium shadow-2xl animate-in fade-in slide-in-from-top-4 flex items-center gap-3 border border-gray-800">
+          <div role="status" className="absolute top-6 right-6 lg:right-10 bg-gray-900 text-white px-6 py-3.5 rounded-2xl font-medium shadow-2xl animate-in fade-in slide-in-from-top-4 flex items-center gap-3 border border-gray-800">
             <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
               <i className="ri-check-line text-blue-400 text-sm"></i>
             </div>
-            <span className="text-[14px] tracking-wide">Welcome to the club!</span>
+            <span className="text-[14px] tracking-wide">You are on the list.</span>
+          </div>
+        )}
+
+        {(submitStatus === 'error' || submitStatus === 'invalid') && (
+          <div role="alert" className="absolute top-6 right-6 left-6 sm:left-auto lg:right-10 bg-gray-900 text-white px-6 py-3.5 rounded-2xl font-medium shadow-2xl animate-in fade-in slide-in-from-top-4 flex items-center gap-3 border border-gray-800">
+            <div className="w-6 h-6 flex-shrink-0 rounded-full bg-red-500/20 flex items-center justify-center">
+              <i className="ri-error-warning-line text-red-400 text-sm"></i>
+            </div>
+            <span className="text-[14px] tracking-wide">
+              {submitStatus === 'invalid'
+                ? 'Enter a valid email address.'
+                : 'We could not add you to the list. Please try again.'}
+            </span>
           </div>
         )}
       </div>

@@ -12,7 +12,7 @@ export const DEFAULT_MAINTENANCE: MaintenanceConfig = {
   enabled: false,
   message:
     "We're currently performing scheduled maintenance to improve your shopping experience. We'll be back online shortly.",
-  estimatedMinutes: 30,
+  estimatedMinutes: null,
 };
 
 export function normalizeMaintenance(raw: unknown): MaintenanceConfig {

@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { money, asNumber } from '@/lib/format-money';
+import { asNumber, formatMoney } from '@/lib/format-money';
 
 function InvoiceContent() {
   const params = useParams();
@@ -159,9 +159,9 @@ function InvoiceContent() {
                     ) : null}
                   </td>
                   <td className="py-3 pr-2">{item.quantity}</td>
-                  <td className="py-3 pr-2">GH₵{money(item.unit_price)}</td>
+                  <td className="py-3 pr-2">{formatMoney(item.unit_price, order.currency)}</td>
                   <td className="py-3 text-right">
-                    GH₵{money(item.total_price ?? asNumber(item.unit_price) * item.quantity)}
+                    {formatMoney(item.total_price ?? asNumber(item.unit_price) * item.quantity, order.currency)}
                   </td>
                 </tr>
               ))}
@@ -172,7 +172,7 @@ function InvoiceContent() {
             <div className="w-56 space-y-2 text-sm">
               <div className="flex justify-between font-bold text-base border-t border-gray-300 pt-3">
                 <span>Total</span>
-                <span>GH₵{money(total)}</span>
+                <span>{formatMoney(total, order.currency)}</span>
               </div>
               <p className="text-xs text-gray-500 capitalize">
                 Status: {order.status} · Payment: {order.payment_status}

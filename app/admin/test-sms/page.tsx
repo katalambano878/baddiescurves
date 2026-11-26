@@ -8,7 +8,7 @@ export default function TestSmsPage() {
     const [isPending, startTransition] = useTransition();
     const [result, setResult] = useState<any>(null);
     const [phone, setPhone] = useState('024'); // Common start
-    const [message, setMessage] = useState('Test message from Standard Store Admin');
+    const [message, setMessage] = useState('Test message from BADDIECURVES');
 
     const handleSend = () => {
         setResult(null);
@@ -23,7 +23,16 @@ export default function TestSmsPage() {
 
     return (
         <div className="p-6">
-            <h1 className="text-2xl font-bold mb-6">Test SMS Integration</h1>
+            <h1 className="text-2xl font-bold mb-2">Test SMS</h1>
+            <div className="mb-6 max-w-3xl text-sm text-gray-600 space-y-1">
+                <p>
+                    This sends one real text straight to Moolre.
+                </p>
+                <p>
+                    Order texts do not take this route: they go through Taysend first, and Moolre is only the backup.
+                    So a result here tells you whether Moolre accepts a text. It does not prove that order texts work.
+                </p>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow border border-gray-100">

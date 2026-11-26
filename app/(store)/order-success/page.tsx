@@ -5,17 +5,18 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useCurrency } from '@/lib/currency';
+import { formatMoney } from '@/lib/format-money';
 import { useCart } from '@/context/CartContext';
 
 function OrderSuccessContent() {
-  const { formatPrice } = useCurrency();
   const { clearCart } = useCart();
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
   const paymentSuccess = searchParams.get('payment_success');
   const gatewayParam = searchParams.get('gateway');
   const [order, setOrder] = useState<any>(null);
+  // An order's amounts are always shown in the currency it was placed in.
+  const formatPrice = (amount: unknown) => formatMoney(amount, order?.currency);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(true);
   const [verifying, setVerifying] = useState(false);
@@ -146,7 +147,6 @@ function OrderSuccessContent() {
   const orderDate = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const estimatedDelivery = new Date(new Date(order.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const isPaid = order.payment_status === 'paid';
-  const pointsEarned = Math.floor(order.total / 10);
   const payUrl = `/pay/${order.order_number || order.id}`;
 
   return (
@@ -231,27 +231,6 @@ function OrderSuccessContent() {
               </Link>
             </div>
 
-            {isPaid && (
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border-2 border-amber-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 flex items-center justify-center bg-amber-500 rounded-full">
-                    <i className="ri-star-fill text-white text-2xl"></i>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold text-gray-900 text-lg">You Earned {pointsEarned} Points!</p>
-                    <p className="text-sm text-gray-600">Join our loyalty program to redeem.</p>
-                  </div>
-                </div>
-                <Link
-                  href="/register"
-                  className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap"
-                >
-                  Join Now
-                </Link>
-              </div>
-            </div>
-            )}
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-8">
@@ -262,7 +241,7 @@ function OrderSuccessContent() {
                   <div key={item.id} className="flex items-center space-x-4">
                     <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
                       <img
-                        src={item.metadata?.image || 'https://via.placeholder.com/150'}
+                        src={item.metadata?.image || '/placeholder-product.svg'}
                         alt={item.product_name}
                         className="w-full h-full object-cover object-center"
                       />
@@ -292,6 +271,12 @@ function OrderSuccessContent() {
                   <span>Shipping</span>
                   <span>{formatPrice(order.shipping_total)}</span>
                 </div>
+                {Number(order.discount_total) > 0 && (
+                  <div className="flex justify-between text-sm text-emerald-800 mb-2">
+                    <span>Discount{order.metadata?.coupon_code ? ` (${order.metadata.coupon_code})` : ''}</span>
+                    <span>-{formatPrice(order.discount_total)}</span>
+                  </div>
+                )}
 
                 <div className="flex justify-between text-xl font-bold text-gray-900 border-t border-gray-200 pt-2">
                   <span>{isPaid ? 'Total Paid' : 'Total Due'}</span>
@@ -358,7 +343,7 @@ function OrderSuccessContent() {
                     <i className="ri-box-3-line text-blue-700 mt-1"></i>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">Processing</p>
-                      <p className="text-sm text-gray-600">We'll pack your order today</p>
+                      <p className="text-sm text-gray-600">Orders process in 3 days to 1 week</p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">
@@ -380,9 +365,9 @@ function OrderSuccessContent() {
                 <i className="ri-customer-service-line mr-1"></i>
                 Contact Support
               </Link>
-              <Link href="/account/orders" className="text-blue-700 hover:text-blue-900 font-semibold whitespace-nowrap">
+              <Link href="/order-tracking" className="text-blue-700 hover:text-blue-900 font-semibold whitespace-nowrap">
                 <i className="ri-question-line mr-1"></i>
-                Order Help
+                Track this order
               </Link>
               <Link href="/returns" className="text-blue-700 hover:text-blue-900 font-semibold whitespace-nowrap">
                 <i className="ri-arrow-left-right-line mr-1"></i>

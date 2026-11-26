@@ -22,11 +22,13 @@ export default function PaymentPage() {
   useEffect(() => {
     async function fetchOrder() {
       try {
-        // Fetch order by ID (UUID) or order_number
+        // Fetch order by ID (UUID) or order_number: one exact column, which
+        // is what the data API allows for a guest order link.
+        const byId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
         let query = supabase
           .from('orders')
           .select('*')
-          .or(`id.eq.${orderId},order_number.eq.${orderId}`)
+          .eq(byId ? 'id' : 'order_number', orderId)
           .single();
 
         const { data, error: fetchError } = await query;

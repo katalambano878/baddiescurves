@@ -208,8 +208,9 @@ export function authorizeRestAccess(opts: {
     }
 
     if (table === "orders" && body && typeof body === "object") {
-      const row = Array.isArray(body) ? body[0] : body;
-      if (row && typeof row === "object") {
+      // Every row, not only the first: a batch could otherwise create a paid order.
+      for (const row of Array.isArray(body) ? body : [body]) {
+        if (!row || typeof row !== "object") continue;
         const paymentStatus = (row as any).payment_status;
         if (paymentStatus && paymentStatus !== "pending") {
           return {

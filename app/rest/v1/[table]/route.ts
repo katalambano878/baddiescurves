@@ -10,6 +10,7 @@ import {
   authorizeRestAccess,
   resolveRestActor,
 } from "@/lib/db/rest-acl";
+import { guardTable } from "@/lib/db/rest-guard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,7 +52,7 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders() });
 }
 
-export async function GET(
+async function getUnguarded(
   req: NextRequest,
   ctx: { params: Promise<{ table: string }> }
 ) {
@@ -110,7 +111,7 @@ export async function GET(
   return NextResponse.json(result.data ?? [], { status: 200, headers });
 }
 
-export async function POST(
+async function postUnguarded(
   req: NextRequest,
   ctx: { params: Promise<{ table: string }> }
 ) {
@@ -158,7 +159,7 @@ export async function POST(
   });
 }
 
-export async function PATCH(
+async function patchUnguarded(
   req: NextRequest,
   ctx: { params: Promise<{ table: string }> }
 ) {
@@ -198,7 +199,7 @@ export async function PATCH(
   return NextResponse.json(result.data, { status: 200, headers: corsHeaders() });
 }
 
-export async function DELETE(
+async function deleteUnguarded(
   req: NextRequest,
   ctx: { params: Promise<{ table: string }> }
 ) {
@@ -235,3 +236,10 @@ export async function DELETE(
 
   return NextResponse.json(result.data ?? null, { status: 200, headers: corsHeaders() });
 }
+
+// Two layers, and both must allow a request: the shared guard (rest-guard.ts)
+// first, then this shop's own rules (rest-acl.ts) inside each handler.
+export const GET = guardTable("GET", getUnguarded);
+export const POST = guardTable("POST", postUnguarded);
+export const PATCH = guardTable("PATCH", patchUnguarded);
+export const DELETE = guardTable("DELETE", deleteUnguarded);

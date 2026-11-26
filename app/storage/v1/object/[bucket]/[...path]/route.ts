@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ALLOWED_UPLOAD_TYPES, createStorageClient } from "@/lib/db/storage";
 import { isPlainPostgres } from "@/lib/db/mode";
 import { resolveRestActor } from "@/lib/db/rest-acl";
+import { guardStorageWrite } from "@/lib/db/rest-guard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,7 +33,7 @@ function objectPathFrom(segments: string[]): string | null {
  * The body is either the raw file bytes or multipart form data holding the
  * file (supabase-js sends a File as multipart).
  */
-export async function POST(
+async function postUnguarded(
   req: NextRequest,
   ctx: { params: Promise<{ bucket: string; path: string[] }> }
 ) {
@@ -104,7 +105,7 @@ export async function POST(
   });
 }
 
-export async function DELETE(
+async function deleteUnguarded(
   req: NextRequest,
   ctx: { params: Promise<{ bucket: string; path: string[] }> }
 ) {
@@ -125,3 +126,6 @@ export async function DELETE(
   }
   return NextResponse.json({});
 }
+
+export const POST = guardStorageWrite(postUnguarded);
+export const DELETE = guardStorageWrite(deleteUnguarded);

@@ -83,7 +83,8 @@ export function mapProductToCard(product: any, opts: { badge?: string } = {}) {
     image: images[0]?.url || PRODUCT_PLACEHOLDER_IMAGE,
     rating: product.rating_avg || 0,
     reviewCount: product.review_count || 0,
-    badge: prices.onSale ? 'Sale' : opts.badge,
+    // The Sale badge is added by the card itself, only when this visitor's price is reduced.
+    badge: opts.badge,
     inStock: effectiveStock > 0,
     maxStock: effectiveStock > 0 ? effectiveStock : 0,
     moq: product.moq || 1,
@@ -154,6 +155,8 @@ export default function ProductCard({
   // No price in this visitor's market (for example no dollar price set yet).
   const unavailable = !(shownPrice > 0);
   const canBuy = inStock && !unavailable;
+  // "Sale" only when the price this visitor sees is reduced: a sale can be for one market only.
+  const shownBadge = discount > 0 ? 'Sale' : badge === 'Sale' ? undefined : badge;
   const MAX_SWATCHES = 5;
 
   return (
@@ -167,9 +170,9 @@ export default function ProductCard({
 
         {/* Badges */}
         <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
-          {badge && (
+          {shownBadge && (
             <span className="bg-white/80 backdrop-blur-xl text-gray-900 border border-white/40 text-[9px] uppercase tracking-[0.2em] font-bold px-3 py-1.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-              {badge}
+              {shownBadge}
             </span>
           )}
           {discount > 0 && (

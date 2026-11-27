@@ -8,6 +8,7 @@ import AnnouncementBar from './AnnouncementBar';
 import { useCart } from '@/context/CartContext';
 import { supabase } from '@/lib/supabase';
 import { useCMS } from '@/context/CMSContext';
+import { useIsGhana } from '@/lib/currency';
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -17,6 +18,7 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   // The Sale link only shows while at least one sale is live.
   const [hasSale, setHasSale] = useState(false);
+  const isGhana = useIsGhana();
 
   const { cartCount, isCartOpen, setIsCartOpen } = useCart();
   const { getSetting } = useCMS();
@@ -33,7 +35,7 @@ export default function Header() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/storefront/sale?count=1', { cache: 'no-store' })
+    fetch(`/api/storefront/sale?count=1&currency=${isGhana ? 'GHS' : 'USD'}`, { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : { count: 0 }))
       .then((json) => {
         if (!cancelled) setHasSale(Number(json?.count) > 0);
@@ -42,7 +44,7 @@ export default function Header() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isGhana]);
 
   useEffect(() => {
     // Wishlist logic

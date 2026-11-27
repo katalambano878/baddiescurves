@@ -6,6 +6,7 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import ProductCard, { mapProductToCard } from '@/components/ProductCard';
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton';
 import PageHero from '@/components/PageHero';
+import { useIsGhana } from '@/lib/currency';
 
 type SaleCard = ReturnType<typeof mapProductToCard>;
 
@@ -16,23 +17,25 @@ export default function SalePage() {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [category, setCategory] = useState('all');
+  // Sales can be for Ghana only or for outside Ghana only, so ask for this visitor's market.
+  const currency = useIsGhana() ? 'GHS' : 'USD';
 
   const load = useCallback(async () => {
     setLoading(true);
     setFailed(false);
     try {
-      const res = await fetch('/api/storefront/sale', { cache: 'no-store' });
+      const res = await fetch(`/api/storefront/sale?currency=${currency}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`Sale request failed (${res.status})`);
       const json = await res.json();
-      // Keep only products that really show a lower price right now.
-      setCards((json.products || []).map((p: any) => mapProductToCard(p)).filter((c: SaleCard) => c.badge === 'Sale'));
+      // The server only returns products with a lower price in this visitor's currency.
+      setCards((json.products || []).map((p: any) => mapProductToCard(p)));
     } catch (err) {
       console.error('[sale]', err);
       setFailed(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currency]);
 
   useEffect(() => {
     load();

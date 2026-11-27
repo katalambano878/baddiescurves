@@ -16,6 +16,7 @@ export const runtime = 'nodejs';
  *   { action: 'remove',                                     productIds: string[] }
  *   { action: 'variant_prices', items: [{ variantId, price }], currency?: 'GHS' | 'USD' }
  *   { action: 'set_active', active: boolean }                       // every sale on or off
+ *   { action: 'set_markets', markets: 'all' | 'USD' | 'GHS' }       // who sees sale prices
  *   { action: 'set_product_active', active: boolean, productIds }   // chosen products on or off
  *
  * This shop sells in cedis and dollars. A percentage moves both prices. A
@@ -33,6 +34,13 @@ export const runtime = 'nodejs';
 
 const MAX_IDS = 2000;
 const SALES_ACTIVE_KEY = 'sales_active';
+/** Who sees sale prices: "all", "USD" (outside Ghana only) or "GHS" (Ghana only). */
+const SALES_MARKETS_KEY = 'sales_markets';
+
+function marketsOf(v: unknown): 'all' | 'USD' | 'GHS' {
+    const s = String(v ?? '').toUpperCase();
+    return s === 'USD' ? 'USD' : s === 'GHS' ? 'GHS' : 'all';
+}
 
 const PRODUCT_ROWS_SQL = `
   SELECT p.id, p.name, p.slug, p.status, p.on_sale, p.metadata,
@@ -109,14 +117,22 @@ export async function GET(request: Request) {
 
     try {
         const pool = getPool();
-        const [products, setting] = await Promise.all([
+        const [products, settings] = await Promise.all([
             pool.query(`${PRODUCT_ROWS_SQL} ORDER BY p.created_at DESC LIMIT 5000`),
-            pool.query(`SELECT value FROM site_settings WHERE key = $1 LIMIT 1`, [SALES_ACTIVE_KEY]),
+            pool.query(`SELECT key, value FROM site_settings WHERE key = ANY($1::text[])`, [
+                [SALES_ACTIVE_KEY, SALES_MARKETS_KEY],
+            ]),
         ]);
-        const value = setting.rows[0]?.value;
+        const byKey = new Map(settings.rows.map((r: any) => [r.key, r.value]));
+        const active = byKey.get(SALES_ACTIVE_KEY);
         // No row yet means ON.
-        const salesActive = setting.rows.length === 0 ? true : value === true || value === 'true';
-        return NextResponse.json({ success: true, salesActive, products: products.rows });
+        const salesActive = !byKey.has(SALES_ACTIVE_KEY) ? true : active === true || active === 'true';
+        return NextResponse.json({
+            success: true,
+            salesActive,
+            salesMarkets: marketsOf(byKey.get(SALES_MARKETS_KEY)),
+            products: products.rows,
+        });
     } catch (err: any) {
         console.error('[admin/sales] load error:', err?.message || err);
         return NextResponse.json({ error: err?.message || 'Failed to load products' }, { status: 500 });
@@ -164,6 +180,34 @@ export async function POST(request: Request) {
         } catch (err: any) {
             await client.query('ROLLBACK').catch(() => {});
             return errorResponse(err, 'Failed to switch sales');
+        } finally {
+            client.release();
+        }
+    }
+
+    // Who sees sale prices: everyone, outside Ghana only, or Ghana only. The
+    // setting and every sale price change together.
+    if (action === 'set_markets') {
+        const raw = String(body?.markets ?? '').toUpperCase();
+        if (!['ALL', 'USD', 'GHS'].includes(raw)) {
+            return NextResponse.json({ error: 'Choose everyone, outside Ghana or Ghana' }, { status: 400 });
+        }
+        const markets = marketsOf(raw);
+        const client = await getPool().connect();
+        try {
+            await client.query('BEGIN');
+            await client.query(
+                `INSERT INTO site_settings (key, value, category, updated_at)
+                 VALUES ($1, $2::jsonb, 'sales', now())
+                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+                [SALES_MARKETS_KEY, JSON.stringify(markets)],
+            );
+            const res = await client.query(`SELECT public.sale_enforce_markets() AS result`);
+            await client.query('COMMIT');
+            return NextResponse.json({ success: true, action, markets, result: res.rows[0]?.result });
+        } catch (err: any) {
+            await client.query('ROLLBACK').catch(() => {});
+            return errorResponse(err, 'Could not change who sees sale prices');
         } finally {
             client.release();
         }

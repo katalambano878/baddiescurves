@@ -1,28 +1,48 @@
 import { NextResponse } from 'next/server';
 import { getPool } from '@/lib/db/pool';
+import { marketOf } from '@/lib/market';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 /**
  * Products whose sale is live right now (on sale and not switched off).
- *   GET /api/storefront/sale          → { products: [...] } shaped for mapProductToCard
- *   GET /api/storefront/sale?count=1  → { count } for the header's Sale link
+ *   GET /api/storefront/sale?currency=GHS|USD          → { products: [...] } shaped for mapProductToCard
+ *   GET /api/storefront/sale?currency=GHS|USD&count=1  → { count } for the header's Sale link
+ *
+ * A sale can be limited to one market (Admin → Sales, "Who sees sale prices"),
+ * so the list is worked out for the visitor's own currency: a product only
+ * counts when its price in that currency is really reduced.
  *
  * Only public catalogue columns are returned.
  */
 
-const LIVE_WHERE = `
+/** Products with a lower price right now in one currency (cedi columns end in _ghs). */
+function liveWhere(currency: 'GHS' | 'USD'): string {
+  const s = currency === 'GHS' ? '_ghs' : '';
+  return `
   p.status = 'active'
   AND p.on_sale = true
-  AND NOT COALESCE(p.metadata ? 'paused_sale_price', false)
+  AND (
+    (
+      NOT EXISTS (SELECT 1 FROM product_variants v0 WHERE v0.product_id = p.id)
+      AND COALESCE(p.compare_at_price${s} > p.price${s}, false)
+    )
+    OR EXISTS (
+      SELECT 1 FROM product_variants v1
+      WHERE v1.product_id = p.id AND COALESCE(v1.compare_at_price${s} > v1.price${s}, false)
+    )
+  )
 `;
+}
 
 // A sale that changes should show at once, so nothing may cache this.
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
 export async function GET(request: Request) {
-    const countOnly = new URL(request.url).searchParams.get('count') === '1';
+    const params = new URL(request.url).searchParams;
+    const countOnly = params.get('count') === '1';
+    const LIVE_WHERE = liveWhere(marketOf(params.get('currency')));
 
     try {
         const pool = getPool();

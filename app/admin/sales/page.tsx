@@ -5,6 +5,14 @@ import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 
 type Currency = 'GHS' | 'USD';
+/** Who sees sale prices: everyone, customers outside Ghana only ($), or customers in Ghana only (GH₵). */
+type Markets = 'all' | 'USD' | 'GHS';
+
+const MARKET_CHOICES: { value: Markets; label: string; detail: string }[] = [
+    { value: 'all', label: 'Everyone', detail: 'Ghana and everywhere else' },
+    { value: 'USD', label: 'Outside Ghana only', detail: 'Dollar prices ($)' },
+    { value: 'GHS', label: 'Ghana only', detail: 'Cedi prices (GH₵)' },
+];
 
 /** One currency's regular price and, when there is one, its sale price. */
 type Money = { regular: number; sale: number | null };
@@ -74,7 +82,7 @@ function summarise(list: (Money | null)[]): Money | null {
     };
 }
 
-function toRow(r: any): ProductRow {
+function toRow(r: any, markets: Markets = 'all'): ProductRow {
     const meta = r.metadata || {};
     const variants: VariantRow[] = (r.variants || []).map((v: any) => ({
         id: v.id,
@@ -90,7 +98,9 @@ function toRow(r: any): ProductRow {
     const everyVariantHasGhs = hasVariants && variants.every((v) => v.ghs != null);
     const ghs = hasVariants ? (everyVariantHasGhs ? summarise(variants.map((v) => v.ghs)) : null) : ownGhs;
     const usd = hasVariants ? (summarise(variants.map((v) => v.usd)) as Money) : ownUsd;
-    const currency: Currency = ghs != null && ghs.regular > 0 ? 'GHS' : 'USD';
+    // Sale prices are typed in cedis, unless sales are for outside Ghana only
+    // or the product has no cedi price.
+    const currency: Currency = markets !== 'USD' && ghs != null && ghs.regular > 0 ? 'GHS' : 'USD';
 
     const perItem = hasVariants
         ? variants.map((v) => (currency === 'GHS' ? v.ghs : v.usd))
@@ -141,6 +151,8 @@ export default function AdminSalesPage() {
     const [busy, setBusy] = useState(false);
     const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
     const [salesActive, setSalesActive] = useState(true);
+    const [salesMarkets, setSalesMarkets] = useState<Markets>('all');
+    const [changingMarkets, setChangingMarkets] = useState<Markets | null>(null);
     const [togglingActive, setTogglingActive] = useState(false);
     // A row's switch while its request is running: shows the new position at once.
     const [switching, setSwitching] = useState<{ id: string; to: boolean } | null>(null);
@@ -150,7 +162,9 @@ export default function AdminSalesPage() {
         setLoadError(null);
         try {
             const json = await adminFetch('/api/admin/sales');
-            setProducts((json.products || []).map(toRow));
+            const markets: Markets = json.salesMarkets === 'USD' || json.salesMarkets === 'GHS' ? json.salesMarkets : 'all';
+            setSalesMarkets(markets);
+            setProducts((json.products || []).map((r: any) => toRow(r, markets)));
             setSalesActive(json.salesActive !== false);
         } catch (err: any) {
             setLoadError(err?.message || 'Could not load products');
@@ -225,7 +239,7 @@ export default function AdminSalesPage() {
     /** Put the server's updated rows into the table. */
     const mergeRows = (rows: any[] | undefined) => {
         if (!rows?.length) return;
-        const byId = new Map(rows.map((r) => [r.id, toRow(r)]));
+        const byId = new Map(rows.map((r) => [r.id, toRow(r, salesMarkets)]));
         setProducts((prev) => prev.map((p) => byId.get(p.id) || p));
     };
 
@@ -253,6 +267,41 @@ export default function AdminSalesPage() {
             setTogglingActive(false);
         }
     };
+
+    /** Choose who sees sale prices: everyone, outside Ghana only, or Ghana only. */
+    const changeMarkets = async (next: Markets) => {
+        if (next === salesMarkets || changingMarkets) return;
+        const question =
+            next === 'all'
+                ? 'Show sale prices to everyone? Customers in Ghana and outside Ghana will both see the sale prices.'
+                : next === 'USD'
+                    ? 'Show sale prices outside Ghana only? Customers in Ghana will see normal cedi prices. Dollar sale prices stay.'
+                    : 'Show sale prices in Ghana only? Customers outside Ghana will see normal dollar prices. Cedi sale prices stay.';
+        if (!confirm(question)) return;
+        setChangingMarkets(next);
+        try {
+            await callApi({ action: 'set_markets', markets: next });
+            setExpandedId(null);
+            setSelected(new Set());
+            await load();
+            setToast({
+                text:
+                    next === 'all'
+                        ? 'Sale prices now show to everyone.'
+                        : next === 'USD'
+                            ? 'Sale prices now show outside Ghana only. Ghana is back to normal prices.'
+                            : 'Sale prices now show in Ghana only. Outside Ghana is back to normal prices.',
+                ok: true,
+            });
+        } catch (err: any) {
+            setToast({ text: err?.message || 'Could not change who sees sale prices', ok: false });
+        } finally {
+            setChangingMarkets(null);
+        }
+    };
+
+    /** The currency a bulk fixed price is typed in. */
+    const bulkCurrency: Currency = salesMarkets === 'USD' ? 'USD' : 'GHS';
 
     /** Switch one product's sale on or off. */
     const toggleProductSale = async (p: ProductRow) => {
@@ -331,7 +380,7 @@ export default function AdminSalesPage() {
                 setToast({ text: 'Enter a valid sale price', ok: false });
                 return;
             }
-            payload = { action: 'apply', mode: 'fixed', value, currency: 'GHS', productIds: ids };
+            payload = { action: 'apply', mode: 'fixed', value, currency: bulkCurrency, productIds: ids };
         }
 
         setBusy(true);
@@ -349,7 +398,7 @@ export default function AdminSalesPage() {
                 setToast({
                     text:
                         (skipped
-                            ? `Set sale price on ${done} product${done !== 1 ? 's' : ''}. ${skipped} skipped (has variants, has no cedi price, or the price is not below the regular price).`
+                            ? `Set sale price on ${done} product${done !== 1 ? 's' : ''}. ${skipped} skipped (has variants, has no ${bulkCurrency === 'GHS' ? 'cedi' : 'dollar'} price, or the price is not below the regular price).`
                             : `Set sale price on ${n} product${n > 1 ? 's' : ''}.`) + pausedNote(json),
                     ok: done > 0,
                 });
@@ -463,14 +512,17 @@ export default function AdminSalesPage() {
     const priceCell = (p: ProductRow, pick: (m: Money) => number | null, className: string) => {
         const main = pick(primary(p));
         if (main == null) return <span className="text-gray-400">—</span>;
-        const usd = p.currency === 'GHS' ? pick(p.usd) : null;
+        // The other currency goes underneath, so both markets are always in view.
+        const otherCurrency: Currency = p.currency === 'GHS' ? 'USD' : 'GHS';
+        const otherMoney = otherCurrency === 'USD' ? p.usd : p.ghs;
+        const other = otherMoney ? pick(otherMoney) : null;
         return (
             <div className="tabular-nums">
                 <div className={className}>
                     {p.priceVaries && <span className="font-normal text-gray-500">From </span>}
                     {fmtMoney(main, p.currency)}
                 </div>
-                {usd != null && usd > 0 && <div className="text-xs text-gray-500">{fmtMoney(usd, 'USD')}</div>}
+                {other != null && other > 0 && <div className="text-xs text-gray-600">{fmtMoney(other, otherCurrency)}</div>}
             </div>
         );
     };
@@ -540,6 +592,53 @@ export default function AdminSalesPage() {
                     </span>
                 </button>
             </div>
+
+            {/* Who sees sale prices */}
+            <fieldset className="bg-white rounded-xl border border-gray-200 p-5" disabled={!!changingMarkets || busy || togglingActive || loading}>
+                <legend className="sr-only">Who sees sale prices</legend>
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                        <p className="font-semibold text-gray-900">Who sees sale prices</p>
+                        <p className="text-sm text-gray-600 mt-0.5 max-w-xl">
+                            {salesMarkets === 'all'
+                                ? 'Every customer sees the sale prices, in cedis in Ghana and in dollars everywhere else.'
+                                : salesMarkets === 'USD'
+                                    ? 'Only customers outside Ghana see sale prices. Customers in Ghana see normal cedi prices.'
+                                    : 'Only customers in Ghana see sale prices. Customers outside Ghana see normal dollar prices.'}
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 lg:w-[620px] flex-shrink-0">
+                        {MARKET_CHOICES.map((choice) => {
+                            const chosen = salesMarkets === choice.value;
+                            const pending = changingMarkets === choice.value;
+                            return (
+                                <label
+                                    key={choice.value}
+                                    className={`relative flex items-center gap-2.5 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-500 has-[:disabled]:cursor-not-allowed ${
+                                        chosen ? 'border-blue-700 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="sales-markets"
+                                        value={choice.value}
+                                        checked={chosen}
+                                        onChange={() => changeMarkets(choice.value)}
+                                        className="w-4 h-4 text-blue-700 border-gray-300 focus:ring-0"
+                                    />
+                                    <span className="min-w-0">
+                                        <span className={`block text-sm font-semibold ${chosen ? 'text-blue-800' : 'text-gray-900'}`}>
+                                            {choice.label}
+                                            {pending && <i className="ri-loader-4-line animate-spin ml-1.5 align-middle" aria-hidden="true"></i>}
+                                        </span>
+                                        <span className="block text-xs text-gray-600">{choice.detail}</span>
+                                    </span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                </div>
+            </fieldset>
 
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -643,8 +742,8 @@ export default function AdminSalesPage() {
                                 step="0.01"
                                 value={bulkFixed}
                                 onChange={(e) => setBulkFixed(e.target.value)}
-                                placeholder="₵ price"
-                                aria-label="Sale price in cedis"
+                                placeholder={bulkCurrency === 'GHS' ? '₵ price' : '$ price'}
+                                aria-label={bulkCurrency === 'GHS' ? 'Sale price in cedis' : 'Sale price in dollars'}
                                 className="w-28 px-3 py-2 border border-gray-300 rounded-lg bg-white"
                             />
                             <button
@@ -681,9 +780,13 @@ export default function AdminSalesPage() {
                     </div>
                 </div>
                 <p className="text-xs text-gray-600 mt-2">
-                    A discount % lowers the cedi price and the dollar price together. A fixed price is in cedis, applies
-                    only to products without variants, and must be below the regular price; the dollar price drops by the
-                    same share. For variant products use a percentage, or click &quot;Variant prices&quot; on the row.
+                    {salesMarkets === 'all'
+                        ? 'A discount % lowers the cedi price and the dollar price together. A fixed price is in cedis and the dollar price drops by the same share.'
+                        : salesMarkets === 'USD'
+                            ? 'Discounts apply to dollar prices only. Ghana prices stay as they are. A fixed price is in dollars.'
+                            : 'Discounts apply to cedi prices only. Prices outside Ghana stay as they are. A fixed price is in cedis.'}{' '}
+                    A fixed price applies only to products without variants and must be below the regular price. For
+                    variant products use a percentage, or click &quot;Variant prices&quot; on the row.
                 </p>
             </div>
 
@@ -788,8 +891,11 @@ export default function AdminSalesPage() {
                                                                 {p.status !== 'active' && (
                                                                     <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded">{p.status}</span>
                                                                 )}
-                                                                {p.currency === 'USD' && (
+                                                                {p.currency === 'USD' && salesMarkets !== 'USD' && (
                                                                     <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded">No cedi price</span>
+                                                                )}
+                                                                {salesMarkets === 'USD' && !(p.usd.regular > 0) && (
+                                                                    <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded">No dollar price</span>
                                                                 )}
                                                             </div>
                                                         </div>
